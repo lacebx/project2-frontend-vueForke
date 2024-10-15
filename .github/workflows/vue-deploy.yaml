@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: dev
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
       - run: npm install
       - run: npm run build
       - name: Deploy to Server
@@ -23,4 +23,4 @@ jobs:
           SOURCE: "dist/"
           REMOTE_HOST: "project2.eaglesoftwareteam.com"
           REMOTE_USER: ubuntu
-          TARGET: "/var/www/html/project2/2022/t8"
+          TARGET: "/var/www/html/project2/2024/t8"
