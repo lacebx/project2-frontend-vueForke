@@ -1,436 +1,763 @@
-var feature = require('caniuse-lite/dist/unpacker/feature').default
-var region = require('caniuse-lite/dist/unpacker/region').default
-var fs = require('fs')
-var path = require('path')
+"use strict";
 
-var BrowserslistError = require('./error')
+const conversions = require("webidl-conversions");
+const utils = require("./utils.js");
 
-var IS_SECTION = /^\s*\[(.+)]\s*$/
-var CONFIG_PATTERN = /^browserslist-config-/
-var SCOPED_CONFIG__PATTERN = /@[^/]+(?:\/[^/]+)?\/browserslist-config(?:-|$|\/)/
-var TIME_TO_UPDATE_CANIUSE = 6 * 30 * 24 * 60 * 60 * 1000
-var FORMAT =
-  'Browserslist config should be a string or an array ' +
-  'of strings with browser queries'
+const GetRootNodeOptions = require("./GetRootNodeOptions.js");
+const ceReactionsPreSteps_helpers_custom_elements = require("../helpers/custom-elements.js").ceReactionsPreSteps;
+const ceReactionsPostSteps_helpers_custom_elements = require("../helpers/custom-elements.js").ceReactionsPostSteps;
+const implSymbol = utils.implSymbol;
+const ctorRegistrySymbol = utils.ctorRegistrySymbol;
+const EventTarget = require("./EventTarget.js");
 
-var dataTimeChecked = false
-var filenessCache = {}
-var configCache = {}
-function checkExtend(name) {
-  var use = ' Use `dangerousExtend` option to disable.'
-  if (!CONFIG_PATTERN.test(name) && !SCOPED_CONFIG__PATTERN.test(name)) {
-    throw new BrowserslistError(
-      'Browserslist config needs `browserslist-config-` prefix. ' + use
-    )
+const interfaceName = "Node";
+
+exports.is = value => {
+  return utils.isObject(value) && utils.hasOwn(value, implSymbol) && value[implSymbol] instanceof Impl.implementation;
+};
+exports.isImpl = value => {
+  return utils.isObject(value) && value instanceof Impl.implementation;
+};
+exports.convert = (globalObject, value, { context = "The provided value" } = {}) => {
+  if (exports.is(value)) {
+    return utils.implForWrapper(value);
   }
-  if (name.replace(/^@[^/]+\//, '').indexOf('.') !== -1) {
-    throw new BrowserslistError(
-      '`.` not allowed in Browserslist config name. ' + use
-    )
+  throw new globalObject.TypeError(`${context} is not of type 'Node'.`);
+};
+
+function makeWrapper(globalObject, newTarget) {
+  let proto;
+  if (newTarget !== undefined) {
+    proto = newTarget.prototype;
   }
-  if (name.indexOf('node_modules') !== -1) {
-    throw new BrowserslistError(
-      '`node_modules` not allowed in Browserslist config.' + use
-    )
+
+  if (!utils.isObject(proto)) {
+    proto = globalObject[ctorRegistrySymbol]["Node"].prototype;
   }
+
+  return Object.create(proto);
 }
 
-function isFile(file) {
-  if (file in filenessCache) {
-    return filenessCache[file]
-  }
-  var result = fs.existsSync(file) && fs.statSync(file).isFile()
-  if (!process.env.BROWSERSLIST_DISABLE_CACHE) {
-    filenessCache[file] = result
-  }
-  return result
-}
+exports.create = (globalObject, constructorArgs, privateData) => {
+  const wrapper = makeWrapper(globalObject);
+  return exports.setup(wrapper, globalObject, constructorArgs, privateData);
+};
 
-function eachParent(file, callback) {
-  var dir = isFile(file) ? path.dirname(file) : file
-  var loc = path.resolve(dir)
-  do {
-    if (!pathInRoot(loc)) break
-    var result = callback(loc)
-    if (typeof result !== 'undefined') return result
-  } while (loc !== (loc = path.dirname(loc)))
-  return undefined
-}
+exports.createImpl = (globalObject, constructorArgs, privateData) => {
+  const wrapper = exports.create(globalObject, constructorArgs, privateData);
+  return utils.implForWrapper(wrapper);
+};
 
-function pathInRoot(p) {
-  if (!process.env.BROWSERSLIST_ROOT_PATH) return true
-  var rootPath = path.resolve(process.env.BROWSERSLIST_ROOT_PATH)
-  if (path.relative(rootPath, p).substring(0, 2) === '..') {
-    return false
+exports._internalSetup = (wrapper, globalObject) => {
+  EventTarget._internalSetup(wrapper, globalObject);
+};
+
+exports.setup = (wrapper, globalObject, constructorArgs = [], privateData = {}) => {
+  privateData.wrapper = wrapper;
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: new Impl.implementation(globalObject, constructorArgs, privateData),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
   }
-  return true
-}
+  return wrapper;
+};
 
-function check(section) {
-  if (Array.isArray(section)) {
-    for (var i = 0; i < section.length; i++) {
-      if (typeof section[i] !== 'string') {
-        throw new BrowserslistError(FORMAT)
+exports.new = (globalObject, newTarget) => {
+  const wrapper = makeWrapper(globalObject, newTarget);
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: Object.create(Impl.implementation.prototype),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper[implSymbol];
+};
+
+const exposed = new Set(["Window"]);
+
+exports.install = (globalObject, globalNames) => {
+  if (!globalNames.some(globalName => exposed.has(globalName))) {
+    return;
+  }
+
+  const ctorRegistry = utils.initCtorRegistry(globalObject);
+  class Node extends globalObject.EventTarget {
+    constructor() {
+      throw new globalObject.TypeError("Illegal constructor");
+    }
+
+    getRootNode() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'getRootNode' called on an object that is not a valid instance of Node.");
       }
-    }
-  } else if (typeof section !== 'string') {
-    throw new BrowserslistError(FORMAT)
-  }
-}
-
-function pickEnv(config, opts) {
-  if (typeof config !== 'object') return config
-
-  var name
-  if (typeof opts.env === 'string') {
-    name = opts.env
-  } else if (process.env.BROWSERSLIST_ENV) {
-    name = process.env.BROWSERSLIST_ENV
-  } else if (process.env.NODE_ENV) {
-    name = process.env.NODE_ENV
-  } else {
-    name = 'production'
-  }
-
-  if (opts.throwOnMissing) {
-    if (name && name !== 'defaults' && !config[name]) {
-      throw new BrowserslistError(
-        'Missing config for Browserslist environment `' + name + '`'
-      )
-    }
-  }
-
-  return config[name] || config.defaults
-}
-
-function parsePackage(file) {
-  var config = JSON.parse(
-    fs
-      .readFileSync(file)
-      .toString()
-      .replace(/^\uFEFF/m, '')
-  )
-  if (config.browserlist && !config.browserslist) {
-    throw new BrowserslistError(
-      '`browserlist` key instead of `browserslist` in ' + file
-    )
-  }
-  var list = config.browserslist
-  if (Array.isArray(list) || typeof list === 'string') {
-    list = { defaults: list }
-  }
-  for (var i in list) {
-    check(list[i])
-  }
-
-  return list
-}
-
-function parsePackageOrReadConfig(file) {
-  if (path.basename(file) === 'package.json') {
-    return parsePackage(file)
-  } else {
-    return module.exports.readConfig(file)
-  }
-}
-
-function latestReleaseTime(agents) {
-  var latest = 0
-  for (var name in agents) {
-    var dates = agents[name].releaseDate || {}
-    for (var key in dates) {
-      if (latest < dates[key]) {
-        latest = dates[key]
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = GetRootNodeOptions.convert(globalObject, curArg, {
+          context: "Failed to execute 'getRootNode' on 'Node': parameter 1"
+        });
+        args.push(curArg);
       }
+      return utils.tryWrapperForImpl(esValue[implSymbol].getRootNode(...args));
     }
-  }
-  return latest * 1000
-}
 
-function normalizeStats(data, stats) {
-  if (!data) {
-    data = {}
-  }
-  if (stats && 'dataByBrowser' in stats) {
-    stats = stats.dataByBrowser
-  }
-
-  if (typeof stats !== 'object') return undefined
-
-  var normalized = {}
-  for (var i in stats) {
-    var versions = Object.keys(stats[i])
-    if (versions.length === 1 && data[i] && data[i].versions.length === 1) {
-      var normal = data[i].versions[0]
-      normalized[i] = {}
-      normalized[i][normal] = stats[i][versions[0]]
-    } else {
-      normalized[i] = stats[i]
-    }
-  }
-
-  return normalized
-}
-
-function normalizeUsageData(usageData, data) {
-  for (var browser in usageData) {
-    var browserUsage = usageData[browser]
-    // https://github.com/browserslist/browserslist/issues/431#issuecomment-565230615
-    // caniuse-db returns { 0: "percentage" } for `and_*` regional stats
-    if ('0' in browserUsage) {
-      var versions = data[browser].versions
-      browserUsage[versions[versions.length - 1]] = browserUsage[0]
-      delete browserUsage[0]
-    }
-  }
-}
-
-module.exports = {
-  loadQueries: function loadQueries(ctx, name) {
-    if (!ctx.dangerousExtend && !process.env.BROWSERSLIST_DANGEROUS_EXTEND) {
-      checkExtend(name)
-    }
-    var queries = require(require.resolve(name, { paths: ['.', ctx.path] }))
-    if (queries) {
-      if (Array.isArray(queries)) {
-        return queries
-      } else if (typeof queries === 'object') {
-        if (!queries.defaults) queries.defaults = []
-        return pickEnv(queries, ctx, name)
+    hasChildNodes() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'hasChildNodes' called on an object that is not a valid instance of Node.");
       }
-    }
-    throw new BrowserslistError(
-      '`' +
-        name +
-        '` config exports not an array of queries' +
-        ' or an object of envs'
-    )
-  },
 
-  loadStat: function loadStat(ctx, name, data) {
-    if (!ctx.dangerousExtend && !process.env.BROWSERSLIST_DANGEROUS_EXTEND) {
-      checkExtend(name)
+      return esValue[implSymbol].hasChildNodes();
     }
-    var stats = require(require.resolve(
-      path.join(name, 'browserslist-stats.json'),
-      { paths: ['.'] }
-    ))
-    return normalizeStats(data, stats)
-  },
 
-  getStat: function getStat(opts, data) {
-    var stats
-    if (opts.stats) {
-      stats = opts.stats
-    } else if (process.env.BROWSERSLIST_STATS) {
-      stats = process.env.BROWSERSLIST_STATS
-    } else if (opts.path && path.resolve && fs.existsSync) {
-      stats = eachParent(opts.path, function (dir) {
-        var file = path.join(dir, 'browserslist-stats.json')
-        return isFile(file) ? file : undefined
-      })
-    }
-    if (typeof stats === 'string') {
+    normalize() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'normalize' called on an object that is not a valid instance of Node.");
+      }
+
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
       try {
-        stats = JSON.parse(fs.readFileSync(stats))
-      } catch (e) {
-        throw new BrowserslistError("Can't read " + stats)
+        return esValue[implSymbol].normalize();
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
       }
     }
-    return normalizeStats(data, stats)
-  },
 
-  loadConfig: function loadConfig(opts) {
-    if (process.env.BROWSERSLIST) {
-      return process.env.BROWSERSLIST
-    } else if (opts.config || process.env.BROWSERSLIST_CONFIG) {
-      var file = opts.config || process.env.BROWSERSLIST_CONFIG
-      return pickEnv(parsePackageOrReadConfig(file), opts)
-    } else if (opts.path) {
-      return pickEnv(module.exports.findConfig(opts.path), opts)
-    } else {
-      return undefined
-    }
-  },
-
-  loadCountry: function loadCountry(usage, country, data) {
-    var code = country.replace(/[^\w-]/g, '')
-    if (!usage[code]) {
-      var compressed
-      try {
-        compressed = require('caniuse-lite/data/regions/' + code + '.js')
-      } catch (e) {
-        throw new BrowserslistError('Unknown region name `' + code + '`.')
+    cloneNode() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'cloneNode' called on an object that is not a valid instance of Node.");
       }
-      var usageData = region(compressed)
-      normalizeUsageData(usageData, data)
-      usage[country] = {}
-      for (var i in usageData) {
-        for (var j in usageData[i]) {
-          usage[country][i + ' ' + j] = usageData[i][j]
-        }
-      }
-    }
-  },
-
-  loadFeature: function loadFeature(features, name) {
-    name = name.replace(/[^\w-]/g, '')
-    if (features[name]) return
-    var compressed
-    try {
-      compressed = require('caniuse-lite/data/features/' + name + '.js')
-    } catch (e) {
-      throw new BrowserslistError('Unknown feature name `' + name + '`.')
-    }
-    var stats = feature(compressed).stats
-    features[name] = {}
-    for (var i in stats) {
-      features[name][i] = {}
-      for (var j in stats[i]) {
-        features[name][i][j] = stats[i][j]
-      }
-    }
-  },
-
-  parseConfig: function parseConfig(string) {
-    var result = { defaults: [] }
-    var sections = ['defaults']
-
-    string
-      .toString()
-      .replace(/#[^\n]*/g, '')
-      .split(/\n|,/)
-      .map(function (line) {
-        return line.trim()
-      })
-      .filter(function (line) {
-        return line !== ''
-      })
-      .forEach(function (line) {
-        if (IS_SECTION.test(line)) {
-          sections = line.match(IS_SECTION)[1].trim().split(' ')
-          sections.forEach(function (section) {
-            if (result[section]) {
-              throw new BrowserslistError(
-                'Duplicate section ' + section + ' in Browserslist config'
-              )
-            }
-            result[section] = []
-          })
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg !== undefined) {
+          curArg = conversions["boolean"](curArg, {
+            context: "Failed to execute 'cloneNode' on 'Node': parameter 1",
+            globals: globalObject
+          });
         } else {
-          sections.forEach(function (section) {
-            result[section].push(line)
-          })
+          curArg = false;
         }
-      })
-
-    return result
-  },
-
-  readConfig: function readConfig(file) {
-    if (!isFile(file)) {
-      throw new BrowserslistError("Can't read " + file + ' config')
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].cloneNode(...args));
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
     }
-    return module.exports.parseConfig(fs.readFileSync(file))
-  },
 
-  findConfigFile: function findConfigFile(from) {
-    var resolved = eachParent(from, function (dir) {
-      var config = path.join(dir, 'browserslist')
-      var pkg = path.join(dir, 'package.json')
-      var rc = path.join(dir, '.browserslistrc')
-
-      var pkgBrowserslist
-      if (isFile(pkg)) {
-        try {
-          pkgBrowserslist = parsePackage(pkg)
-        } catch (e) {
-          if (e.name === 'BrowserslistError') throw e
-          console.warn(
-            '[Browserslist] Could not parse ' + pkg + '. Ignoring it.'
-          )
-        }
+    isEqualNode(otherNode) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'isEqualNode' called on an object that is not a valid instance of Node.");
       }
 
-      if (isFile(config) && pkgBrowserslist) {
-        throw new BrowserslistError(
-          dir + ' contains both browserslist and package.json with browsers'
-        )
-      } else if (isFile(rc) && pkgBrowserslist) {
-        throw new BrowserslistError(
-          dir + ' contains both .browserslistrc and package.json with browsers'
-        )
-      } else if (isFile(config) && isFile(rc)) {
-        throw new BrowserslistError(
-          dir + ' contains both .browserslistrc and browserslist'
-        )
-      } else if (isFile(config)) {
-        return config
-      } else if (isFile(rc)) {
-        return rc
-      } else if (pkgBrowserslist) {
-        return pkg
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'isEqualNode' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
       }
-    })
-
-    return resolved
-  },
-
-  findConfig: function findConfig(from) {
-    from = path.resolve(from)
-
-    var fromDir = isFile(from) ? path.dirname(from) : from
-    if (fromDir in configCache) {
-      return configCache[fromDir]
-    }
-
-    var resolved
-    var configFile = this.findConfigFile(from)
-    if (configFile) {
-      resolved = parsePackageOrReadConfig(configFile)
-    }
-
-    if (!process.env.BROWSERSLIST_DISABLE_CACHE) {
-      var configDir = configFile && path.dirname(configFile)
-      eachParent(from, function (dir) {
-        configCache[dir] = resolved
-        if (dir === configDir) {
-          return null
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg === null || curArg === undefined) {
+          curArg = null;
+        } else {
+          curArg = exports.convert(globalObject, curArg, {
+            context: "Failed to execute 'isEqualNode' on 'Node': parameter 1"
+          });
         }
-      })
+        args.push(curArg);
+      }
+      return esValue[implSymbol].isEqualNode(...args);
     }
-    return resolved
-  },
 
-  clearCaches: function clearCaches() {
-    dataTimeChecked = false
-    filenessCache = {}
-    configCache = {}
+    isSameNode(otherNode) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'isSameNode' called on an object that is not a valid instance of Node.");
+      }
 
-    this.cache = {}
-  },
-
-  oldDataWarning: function oldDataWarning(agentsObj) {
-    if (dataTimeChecked) return
-    dataTimeChecked = true
-    if (process.env.BROWSERSLIST_IGNORE_OLD_DATA) return
-
-    var latest = latestReleaseTime(agentsObj)
-    var halfYearAgo = Date.now() - TIME_TO_UPDATE_CANIUSE
-
-    if (latest !== 0 && latest < halfYearAgo) {
-      console.warn(
-        'Browserslist: caniuse-lite is outdated. Please run:\n' +
-          '  npx update-browserslist-db@latest\n' +
-          '  Why you should do it regularly: ' +
-          'https://github.com/browserslist/update-db#readme'
-      )
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'isSameNode' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg === null || curArg === undefined) {
+          curArg = null;
+        } else {
+          curArg = exports.convert(globalObject, curArg, {
+            context: "Failed to execute 'isSameNode' on 'Node': parameter 1"
+          });
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].isSameNode(...args);
     }
-  },
 
-  currentNode: function currentNode() {
-    return 'node ' + process.versions.node
-  },
+    compareDocumentPosition(other) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'compareDocumentPosition' called on an object that is not a valid instance of Node."
+        );
+      }
 
-  env: process.env
-}
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'compareDocumentPosition' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = exports.convert(globalObject, curArg, {
+          context: "Failed to execute 'compareDocumentPosition' on 'Node': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].compareDocumentPosition(...args);
+    }
+
+    contains(other) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'contains' called on an object that is not a valid instance of Node.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'contains' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg === null || curArg === undefined) {
+          curArg = null;
+        } else {
+          curArg = exports.convert(globalObject, curArg, {
+            context: "Failed to execute 'contains' on 'Node': parameter 1"
+          });
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].contains(...args);
+    }
+
+    lookupPrefix(namespace) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'lookupPrefix' called on an object that is not a valid instance of Node.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'lookupPrefix' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg === null || curArg === undefined) {
+          curArg = null;
+        } else {
+          curArg = conversions["DOMString"](curArg, {
+            context: "Failed to execute 'lookupPrefix' on 'Node': parameter 1",
+            globals: globalObject
+          });
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].lookupPrefix(...args);
+    }
+
+    lookupNamespaceURI(prefix) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'lookupNamespaceURI' called on an object that is not a valid instance of Node."
+        );
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'lookupNamespaceURI' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg === null || curArg === undefined) {
+          curArg = null;
+        } else {
+          curArg = conversions["DOMString"](curArg, {
+            context: "Failed to execute 'lookupNamespaceURI' on 'Node': parameter 1",
+            globals: globalObject
+          });
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].lookupNamespaceURI(...args);
+    }
+
+    isDefaultNamespace(namespace) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'isDefaultNamespace' called on an object that is not a valid instance of Node."
+        );
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'isDefaultNamespace' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg === null || curArg === undefined) {
+          curArg = null;
+        } else {
+          curArg = conversions["DOMString"](curArg, {
+            context: "Failed to execute 'isDefaultNamespace' on 'Node': parameter 1",
+            globals: globalObject
+          });
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].isDefaultNamespace(...args);
+    }
+
+    insertBefore(node, child) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'insertBefore' called on an object that is not a valid instance of Node.");
+      }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'insertBefore' on 'Node': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = exports.convert(globalObject, curArg, {
+          context: "Failed to execute 'insertBefore' on 'Node': parameter 1"
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        if (curArg === null || curArg === undefined) {
+          curArg = null;
+        } else {
+          curArg = exports.convert(globalObject, curArg, {
+            context: "Failed to execute 'insertBefore' on 'Node': parameter 2"
+          });
+        }
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].insertBefore(...args));
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    appendChild(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'appendChild' called on an object that is not a valid instance of Node.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'appendChild' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = exports.convert(globalObject, curArg, {
+          context: "Failed to execute 'appendChild' on 'Node': parameter 1"
+        });
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].appendChild(...args));
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    replaceChild(node, child) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'replaceChild' called on an object that is not a valid instance of Node.");
+      }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'replaceChild' on 'Node': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = exports.convert(globalObject, curArg, {
+          context: "Failed to execute 'replaceChild' on 'Node': parameter 1"
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = exports.convert(globalObject, curArg, {
+          context: "Failed to execute 'replaceChild' on 'Node': parameter 2"
+        });
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].replaceChild(...args));
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    removeChild(child) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'removeChild' called on an object that is not a valid instance of Node.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'removeChild' on 'Node': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = exports.convert(globalObject, curArg, {
+          context: "Failed to execute 'removeChild' on 'Node': parameter 1"
+        });
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].removeChild(...args));
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    get nodeType() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get nodeType' called on an object that is not a valid instance of Node.");
+      }
+
+      return esValue[implSymbol]["nodeType"];
+    }
+
+    get nodeName() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get nodeName' called on an object that is not a valid instance of Node.");
+      }
+
+      return esValue[implSymbol]["nodeName"];
+    }
+
+    get baseURI() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get baseURI' called on an object that is not a valid instance of Node.");
+      }
+
+      return esValue[implSymbol]["baseURI"];
+    }
+
+    get isConnected() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get isConnected' called on an object that is not a valid instance of Node.");
+      }
+
+      return esValue[implSymbol]["isConnected"];
+    }
+
+    get ownerDocument() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'get ownerDocument' called on an object that is not a valid instance of Node."
+        );
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["ownerDocument"]);
+    }
+
+    get parentNode() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get parentNode' called on an object that is not a valid instance of Node.");
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["parentNode"]);
+    }
+
+    get parentElement() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'get parentElement' called on an object that is not a valid instance of Node."
+        );
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["parentElement"]);
+    }
+
+    get childNodes() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get childNodes' called on an object that is not a valid instance of Node.");
+      }
+
+      return utils.getSameObject(this, "childNodes", () => {
+        return utils.tryWrapperForImpl(esValue[implSymbol]["childNodes"]);
+      });
+    }
+
+    get firstChild() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get firstChild' called on an object that is not a valid instance of Node.");
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["firstChild"]);
+    }
+
+    get lastChild() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get lastChild' called on an object that is not a valid instance of Node.");
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["lastChild"]);
+    }
+
+    get previousSibling() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'get previousSibling' called on an object that is not a valid instance of Node."
+        );
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["previousSibling"]);
+    }
+
+    get nextSibling() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get nextSibling' called on an object that is not a valid instance of Node.");
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["nextSibling"]);
+    }
+
+    get nodeValue() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get nodeValue' called on an object that is not a valid instance of Node.");
+      }
+
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return esValue[implSymbol]["nodeValue"];
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    set nodeValue(V) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'set nodeValue' called on an object that is not a valid instance of Node.");
+      }
+
+      if (V === null || V === undefined) {
+        V = null;
+      } else {
+        V = conversions["DOMString"](V, {
+          context: "Failed to set the 'nodeValue' property on 'Node': The provided value",
+          globals: globalObject
+        });
+      }
+
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        esValue[implSymbol]["nodeValue"] = V;
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    get textContent() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get textContent' called on an object that is not a valid instance of Node.");
+      }
+
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return esValue[implSymbol]["textContent"];
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    set textContent(V) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'set textContent' called on an object that is not a valid instance of Node.");
+      }
+
+      if (V === null || V === undefined) {
+        V = null;
+      } else {
+        V = conversions["DOMString"](V, {
+          context: "Failed to set the 'textContent' property on 'Node': The provided value",
+          globals: globalObject
+        });
+      }
+
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        esValue[implSymbol]["textContent"] = V;
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+  }
+  Object.defineProperties(Node.prototype, {
+    getRootNode: { enumerable: true },
+    hasChildNodes: { enumerable: true },
+    normalize: { enumerable: true },
+    cloneNode: { enumerable: true },
+    isEqualNode: { enumerable: true },
+    isSameNode: { enumerable: true },
+    compareDocumentPosition: { enumerable: true },
+    contains: { enumerable: true },
+    lookupPrefix: { enumerable: true },
+    lookupNamespaceURI: { enumerable: true },
+    isDefaultNamespace: { enumerable: true },
+    insertBefore: { enumerable: true },
+    appendChild: { enumerable: true },
+    replaceChild: { enumerable: true },
+    removeChild: { enumerable: true },
+    nodeType: { enumerable: true },
+    nodeName: { enumerable: true },
+    baseURI: { enumerable: true },
+    isConnected: { enumerable: true },
+    ownerDocument: { enumerable: true },
+    parentNode: { enumerable: true },
+    parentElement: { enumerable: true },
+    childNodes: { enumerable: true },
+    firstChild: { enumerable: true },
+    lastChild: { enumerable: true },
+    previousSibling: { enumerable: true },
+    nextSibling: { enumerable: true },
+    nodeValue: { enumerable: true },
+    textContent: { enumerable: true },
+    [Symbol.toStringTag]: { value: "Node", configurable: true },
+    ELEMENT_NODE: { value: 1, enumerable: true },
+    ATTRIBUTE_NODE: { value: 2, enumerable: true },
+    TEXT_NODE: { value: 3, enumerable: true },
+    CDATA_SECTION_NODE: { value: 4, enumerable: true },
+    ENTITY_REFERENCE_NODE: { value: 5, enumerable: true },
+    ENTITY_NODE: { value: 6, enumerable: true },
+    PROCESSING_INSTRUCTION_NODE: { value: 7, enumerable: true },
+    COMMENT_NODE: { value: 8, enumerable: true },
+    DOCUMENT_NODE: { value: 9, enumerable: true },
+    DOCUMENT_TYPE_NODE: { value: 10, enumerable: true },
+    DOCUMENT_FRAGMENT_NODE: { value: 11, enumerable: true },
+    NOTATION_NODE: { value: 12, enumerable: true },
+    DOCUMENT_POSITION_DISCONNECTED: { value: 0x01, enumerable: true },
+    DOCUMENT_POSITION_PRECEDING: { value: 0x02, enumerable: true },
+    DOCUMENT_POSITION_FOLLOWING: { value: 0x04, enumerable: true },
+    DOCUMENT_POSITION_CONTAINS: { value: 0x08, enumerable: true },
+    DOCUMENT_POSITION_CONTAINED_BY: { value: 0x10, enumerable: true },
+    DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC: { value: 0x20, enumerable: true }
+  });
+  Object.defineProperties(Node, {
+    ELEMENT_NODE: { value: 1, enumerable: true },
+    ATTRIBUTE_NODE: { value: 2, enumerable: true },
+    TEXT_NODE: { value: 3, enumerable: true },
+    CDATA_SECTION_NODE: { value: 4, enumerable: true },
+    ENTITY_REFERENCE_NODE: { value: 5, enumerable: true },
+    ENTITY_NODE: { value: 6, enumerable: true },
+    PROCESSING_INSTRUCTION_NODE: { value: 7, enumerable: true },
+    COMMENT_NODE: { value: 8, enumerable: true },
+    DOCUMENT_NODE: { value: 9, enumerable: true },
+    DOCUMENT_TYPE_NODE: { value: 10, enumerable: true },
+    DOCUMENT_FRAGMENT_NODE: { value: 11, enumerable: true },
+    NOTATION_NODE: { value: 12, enumerable: true },
+    DOCUMENT_POSITION_DISCONNECTED: { value: 0x01, enumerable: true },
+    DOCUMENT_POSITION_PRECEDING: { value: 0x02, enumerable: true },
+    DOCUMENT_POSITION_FOLLOWING: { value: 0x04, enumerable: true },
+    DOCUMENT_POSITION_CONTAINS: { value: 0x08, enumerable: true },
+    DOCUMENT_POSITION_CONTAINED_BY: { value: 0x10, enumerable: true },
+    DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC: { value: 0x20, enumerable: true }
+  });
+  ctorRegistry[interfaceName] = Node;
+
+  Object.defineProperty(globalObject, interfaceName, {
+    configurable: true,
+    writable: true,
+    value: Node
+  });
+};
+
+const Impl = require("../nodes/Node-impl.js");

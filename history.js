@@ -1,1 +1,266 @@
-module.exports={A:{A:{"1":"A B","2":"K D E F eC"},B:{"1":"4 5 6 7 8 9 C L M G N O P Q H R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I"},C:{"1":"0 1 2 3 4 5 6 7 8 9 J IB K D E F A B C L M G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB HC rB IC sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R JC S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I 9B KC LC gC","2":"fC GC hC iC"},D:{"1":"0 1 2 3 4 5 6 7 8 9 IB K D E F A B C L M G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB HC rB IC sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I 9B KC LC","2":"J"},E:{"1":"K D E F A B C L M G lC mC nC NC AC BC oC pC qC OC PC CC rC DC QC RC SC TC UC sC EC VC WC XC YC ZC aC FC bC tC","2":"J jC MC","4":"IB kC"},F:{"1":"0 1 2 3 C G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB rB sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R JC S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x cC yC BC","2":"F B uC vC wC xC AC"},G:{"1":"E 0C 1C 2C 3C 4C 5C 6C 7C 8C 9C AD BD CD DD ED FD GD HD ID OC PC CC JD DC QC RC SC TC UC KD EC VC WC XC YC ZC aC FC bC","2":"MC zC","4":"dC"},H:{"2":"LD"},I:{"1":"I ND OD dC QD RD","2":"GC J MD PD"},J:{"1":"D A"},K:{"1":"C H AC cC BC","2":"A B"},L:{"1":"I"},M:{"1":"9B"},N:{"1":"A B"},O:{"1":"CC"},P:{"1":"0 1 2 3 J y z SD TD UD VD WD NC XD YD ZD aD bD DC EC FC cD"},Q:{"1":"dD"},R:{"1":"eD"},S:{"1":"fD gD"}},B:1,C:"Session history management",D:true};
+"use strict";
+
+const conversions = require("webidl-conversions");
+const utils = require("./utils.js");
+
+const implSymbol = utils.implSymbol;
+const ctorRegistrySymbol = utils.ctorRegistrySymbol;
+
+const interfaceName = "History";
+
+exports.is = value => {
+  return utils.isObject(value) && utils.hasOwn(value, implSymbol) && value[implSymbol] instanceof Impl.implementation;
+};
+exports.isImpl = value => {
+  return utils.isObject(value) && value instanceof Impl.implementation;
+};
+exports.convert = (globalObject, value, { context = "The provided value" } = {}) => {
+  if (exports.is(value)) {
+    return utils.implForWrapper(value);
+  }
+  throw new globalObject.TypeError(`${context} is not of type 'History'.`);
+};
+
+function makeWrapper(globalObject, newTarget) {
+  let proto;
+  if (newTarget !== undefined) {
+    proto = newTarget.prototype;
+  }
+
+  if (!utils.isObject(proto)) {
+    proto = globalObject[ctorRegistrySymbol]["History"].prototype;
+  }
+
+  return Object.create(proto);
+}
+
+exports.create = (globalObject, constructorArgs, privateData) => {
+  const wrapper = makeWrapper(globalObject);
+  return exports.setup(wrapper, globalObject, constructorArgs, privateData);
+};
+
+exports.createImpl = (globalObject, constructorArgs, privateData) => {
+  const wrapper = exports.create(globalObject, constructorArgs, privateData);
+  return utils.implForWrapper(wrapper);
+};
+
+exports._internalSetup = (wrapper, globalObject) => {};
+
+exports.setup = (wrapper, globalObject, constructorArgs = [], privateData = {}) => {
+  privateData.wrapper = wrapper;
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: new Impl.implementation(globalObject, constructorArgs, privateData),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper;
+};
+
+exports.new = (globalObject, newTarget) => {
+  const wrapper = makeWrapper(globalObject, newTarget);
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: Object.create(Impl.implementation.prototype),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper[implSymbol];
+};
+
+const exposed = new Set(["Window"]);
+
+exports.install = (globalObject, globalNames) => {
+  if (!globalNames.some(globalName => exposed.has(globalName))) {
+    return;
+  }
+
+  const ctorRegistry = utils.initCtorRegistry(globalObject);
+  class History {
+    constructor() {
+      throw new globalObject.TypeError("Illegal constructor");
+    }
+
+    go() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'go' called on an object that is not a valid instance of History.");
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg !== undefined) {
+          curArg = conversions["long"](curArg, {
+            context: "Failed to execute 'go' on 'History': parameter 1",
+            globals: globalObject
+          });
+        } else {
+          curArg = 0;
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].go(...args);
+    }
+
+    back() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'back' called on an object that is not a valid instance of History.");
+      }
+
+      return esValue[implSymbol].back();
+    }
+
+    forward() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'forward' called on an object that is not a valid instance of History.");
+      }
+
+      return esValue[implSymbol].forward();
+    }
+
+    pushState(data, title) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'pushState' called on an object that is not a valid instance of History.");
+      }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'pushState' on 'History': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = conversions["any"](curArg, {
+          context: "Failed to execute 'pushState' on 'History': parameter 1",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = conversions["DOMString"](curArg, {
+          context: "Failed to execute 'pushState' on 'History': parameter 2",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[2];
+        if (curArg !== undefined) {
+          if (curArg === null || curArg === undefined) {
+            curArg = null;
+          } else {
+            curArg = conversions["USVString"](curArg, {
+              context: "Failed to execute 'pushState' on 'History': parameter 3",
+              globals: globalObject
+            });
+          }
+        } else {
+          curArg = null;
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].pushState(...args);
+    }
+
+    replaceState(data, title) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'replaceState' called on an object that is not a valid instance of History.");
+      }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'replaceState' on 'History': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = conversions["any"](curArg, {
+          context: "Failed to execute 'replaceState' on 'History': parameter 1",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = conversions["DOMString"](curArg, {
+          context: "Failed to execute 'replaceState' on 'History': parameter 2",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[2];
+        if (curArg !== undefined) {
+          if (curArg === null || curArg === undefined) {
+            curArg = null;
+          } else {
+            curArg = conversions["USVString"](curArg, {
+              context: "Failed to execute 'replaceState' on 'History': parameter 3",
+              globals: globalObject
+            });
+          }
+        } else {
+          curArg = null;
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].replaceState(...args);
+    }
+
+    get length() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get length' called on an object that is not a valid instance of History.");
+      }
+
+      return esValue[implSymbol]["length"];
+    }
+
+    get state() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get state' called on an object that is not a valid instance of History.");
+      }
+
+      return esValue[implSymbol]["state"];
+    }
+  }
+  Object.defineProperties(History.prototype, {
+    go: { enumerable: true },
+    back: { enumerable: true },
+    forward: { enumerable: true },
+    pushState: { enumerable: true },
+    replaceState: { enumerable: true },
+    length: { enumerable: true },
+    state: { enumerable: true },
+    [Symbol.toStringTag]: { value: "History", configurable: true }
+  });
+  ctorRegistry[interfaceName] = History;
+
+  Object.defineProperty(globalObject, interfaceName, {
+    configurable: true,
+    writable: true,
+    value: History
+  });
+};
+
+const Impl = require("../window/History-impl.js");

@@ -1,654 +1,549 @@
-/*
-  Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-undefined */
-
-import estraverse from "estraverse";
-import esrecurse from "esrecurse";
-import Reference from "./reference.js";
-import Variable from "./variable.js";
-import PatternVisitor from "./pattern-visitor.js";
-import { Definition, ParameterDefinition } from "./definition.js";
-import assert from "assert";
-
-const { Syntax } = estraverse;
-
-/**
- * Traverse identifier in pattern
- * @param {Object} options options
- * @param {pattern} rootPattern root pattern
- * @param {Refencer} referencer referencer
- * @param {callback} callback callback
- * @returns {void}
- */
-function traverseIdentifierInPattern(options, rootPattern, referencer, callback) {
-
-    // Call the callback at left hand identifier nodes, and Collect right hand nodes.
-    const visitor = new PatternVisitor(options, rootPattern, callback);
-
-    visitor.visit(rootPattern);
-
-    // Process the right hand nodes recursively.
-    if (referencer !== null && referencer !== undefined) {
-        visitor.rightHandNodes.forEach(referencer.visit, referencer);
-    }
-}
-
-// Importing ImportDeclaration.
-// http://people.mozilla.org/~jorendorff/es6-draft.html#sec-moduledeclarationinstantiation
-// https://github.com/estree/estree/blob/master/es6.md#importdeclaration
-// FIXME: Now, we don't create module environment, because the context is
-// implementation dependent.
-
-class Importer extends esrecurse.Visitor {
-    constructor(declaration, referencer) {
-        super(null, referencer.options);
-        this.declaration = declaration;
-        this.referencer = referencer;
-    }
-
-    visitImport(id, specifier) {
-        this.referencer.visitPattern(id, pattern => {
-            this.referencer.currentScope().__define(pattern,
-                new Definition(
-                    Variable.ImportBinding,
-                    pattern,
-                    specifier,
-                    this.declaration,
-                    null,
-                    null
-                ));
-        });
-    }
-
-    ImportNamespaceSpecifier(node) {
-        const local = (node.local || node.id);
-
-        if (local) {
-            this.visitImport(local, node);
-        }
-    }
-
-    ImportDefaultSpecifier(node) {
-        const local = (node.local || node.id);
-
-        this.visitImport(local, node);
-    }
-
-    ImportSpecifier(node) {
-        const local = (node.local || node.id);
-
-        if (node.name) {
-            this.visitImport(node.name, node);
-        } else {
-            this.visitImport(local, node);
-        }
-    }
-}
-
+"use strict";
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var _Referencer_jsxPragma, _Referencer_jsxFragmentName, _Referencer_hasReferencedJsxFactory, _Referencer_hasReferencedJsxFragmentFactory, _Referencer_lib;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Referencer = void 0;
+const types_1 = require("@typescript-eslint/types");
+const assert_1 = require("../assert");
+const definition_1 = require("../definition");
+const lib_1 = require("../lib");
+const ClassVisitor_1 = require("./ClassVisitor");
+const ExportVisitor_1 = require("./ExportVisitor");
+const ImportVisitor_1 = require("./ImportVisitor");
+const PatternVisitor_1 = require("./PatternVisitor");
+const Reference_1 = require("./Reference");
+const TypeVisitor_1 = require("./TypeVisitor");
+const Visitor_1 = require("./Visitor");
 // Referencing variables and creating bindings.
-class Referencer extends esrecurse.Visitor {
+class Referencer extends Visitor_1.Visitor {
     constructor(options, scopeManager) {
-        super(null, options);
-        this.options = options;
+        super(options);
+        _Referencer_jsxPragma.set(this, void 0);
+        _Referencer_jsxFragmentName.set(this, void 0);
+        _Referencer_hasReferencedJsxFactory.set(this, false);
+        _Referencer_hasReferencedJsxFragmentFactory.set(this, false);
+        _Referencer_lib.set(this, void 0);
         this.scopeManager = scopeManager;
-        this.parent = null;
-        this.isInnerMethodDefinition = false;
+        __classPrivateFieldSet(this, _Referencer_jsxPragma, options.jsxPragma, "f");
+        __classPrivateFieldSet(this, _Referencer_jsxFragmentName, options.jsxFragmentName, "f");
+        __classPrivateFieldSet(this, _Referencer_lib, options.lib, "f");
     }
-
-    currentScope() {
-        return this.scopeManager.__currentScope;
+    currentScope(dontThrowOnNull) {
+        if (!dontThrowOnNull) {
+            (0, assert_1.assert)(this.scopeManager.currentScope, 'aaa');
+        }
+        return this.scopeManager.currentScope;
     }
-
     close(node) {
-        while (this.currentScope() && node === this.currentScope().block) {
-            this.scopeManager.__currentScope = this.currentScope().__close(this.scopeManager);
+        while (this.currentScope(true) && node === this.currentScope().block) {
+            this.scopeManager.currentScope = this.currentScope().close(this.scopeManager);
         }
     }
-
-    pushInnerMethodDefinition(isInnerMethodDefinition) {
-        const previous = this.isInnerMethodDefinition;
-
-        this.isInnerMethodDefinition = isInnerMethodDefinition;
-        return previous;
-    }
-
-    popInnerMethodDefinition(isInnerMethodDefinition) {
-        this.isInnerMethodDefinition = isInnerMethodDefinition;
-    }
-
     referencingDefaultValue(pattern, assignments, maybeImplicitGlobal, init) {
-        const scope = this.currentScope();
-
         assignments.forEach(assignment => {
-            scope.__referencing(
-                pattern,
-                Reference.WRITE,
-                assignment.right,
-                maybeImplicitGlobal,
-                pattern !== assignment.left,
-                init
-            );
+            this.currentScope().referenceValue(pattern, Reference_1.ReferenceFlag.Write, assignment.right, maybeImplicitGlobal, init);
         });
     }
-
-    visitPattern(node, options, callback) {
-        let visitPatternOptions = options;
-        let visitPatternCallback = callback;
-
-        if (typeof options === "function") {
-            visitPatternCallback = options;
-            visitPatternOptions = { processRightHandNodes: false };
+    populateGlobalsFromLib(globalScope) {
+        for (const lib of __classPrivateFieldGet(this, _Referencer_lib, "f")) {
+            const variables = lib_1.lib[lib];
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            /* istanbul ignore if */ if (!variables) {
+                throw new Error(`Invalid value for lib provided: ${lib}`);
+            }
+            for (const [name, variable] of Object.entries(variables)) {
+                globalScope.defineImplicitVariable(name, variable);
+            }
         }
-
-        traverseIdentifierInPattern(
-            this.options,
-            node,
-            visitPatternOptions.processRightHandNodes ? this : null,
-            visitPatternCallback
-        );
+        // for const assertions (`{} as const` / `<const>{}`)
+        globalScope.defineImplicitVariable('const', {
+            eslintImplicitGlobalSetting: 'readonly',
+            isTypeVariable: true,
+            isValueVariable: false,
+        });
     }
-
+    /**
+     * Searches for a variable named "name" in the upper scopes and adds a pseudo-reference from itself to itself
+     */
+    referenceInSomeUpperScope(name) {
+        let scope = this.scopeManager.currentScope;
+        while (scope) {
+            const variable = scope.set.get(name);
+            if (!variable) {
+                scope = scope.upper;
+                continue;
+            }
+            scope.referenceValue(variable.identifiers[0]);
+            return true;
+        }
+        return false;
+    }
+    referenceJsxPragma() {
+        if (__classPrivateFieldGet(this, _Referencer_jsxPragma, "f") == null || __classPrivateFieldGet(this, _Referencer_hasReferencedJsxFactory, "f")) {
+            return;
+        }
+        __classPrivateFieldSet(this, _Referencer_hasReferencedJsxFactory, this.referenceInSomeUpperScope(__classPrivateFieldGet(this, _Referencer_jsxPragma, "f")), "f");
+    }
+    referenceJsxFragment() {
+        if (__classPrivateFieldGet(this, _Referencer_jsxFragmentName, "f") == null ||
+            __classPrivateFieldGet(this, _Referencer_hasReferencedJsxFragmentFactory, "f")) {
+            return;
+        }
+        __classPrivateFieldSet(this, _Referencer_hasReferencedJsxFragmentFactory, this.referenceInSomeUpperScope(__classPrivateFieldGet(this, _Referencer_jsxFragmentName, "f")), "f");
+    }
+    ///////////////////
+    // Visit helpers //
+    ///////////////////
+    visitClass(node) {
+        ClassVisitor_1.ClassVisitor.visit(this, node);
+    }
+    visitForIn(node) {
+        if (node.left.type === types_1.AST_NODE_TYPES.VariableDeclaration &&
+            node.left.kind !== 'var') {
+            this.scopeManager.nestForScope(node);
+        }
+        if (node.left.type === types_1.AST_NODE_TYPES.VariableDeclaration) {
+            this.visit(node.left);
+            this.visitPattern(node.left.declarations[0].id, pattern => {
+                this.currentScope().referenceValue(pattern, Reference_1.ReferenceFlag.Write, node.right, null, true);
+            });
+        }
+        else {
+            this.visitPattern(node.left, (pattern, info) => {
+                const maybeImplicitGlobal = !this.currentScope().isStrict
+                    ? {
+                        pattern,
+                        node,
+                    }
+                    : null;
+                this.referencingDefaultValue(pattern, info.assignments, maybeImplicitGlobal, false);
+                this.currentScope().referenceValue(pattern, Reference_1.ReferenceFlag.Write, node.right, maybeImplicitGlobal, false);
+            }, { processRightHandNodes: true });
+        }
+        this.visit(node.right);
+        this.visit(node.body);
+        this.close(node);
+    }
+    visitFunctionParameterTypeAnnotation(node) {
+        switch (node.type) {
+            case types_1.AST_NODE_TYPES.AssignmentPattern:
+                this.visitType(node.left.typeAnnotation);
+                break;
+            case types_1.AST_NODE_TYPES.TSParameterProperty:
+                this.visitFunctionParameterTypeAnnotation(node.parameter);
+                break;
+            default:
+                this.visitType(node.typeAnnotation);
+                break;
+        }
+    }
     visitFunction(node) {
-        let i, iz;
-
         // FunctionDeclaration name is defined in upper scope
         // NOTE: Not referring variableScope. It is intended.
         // Since
         //  in ES5, FunctionDeclaration should be in FunctionBody.
         //  in ES6, FunctionDeclaration should be block scoped.
-
-        if (node.type === Syntax.FunctionDeclaration) {
-
+        if (node.type === types_1.AST_NODE_TYPES.FunctionExpression) {
+            if (node.id) {
+                // FunctionExpression with name creates its special scope;
+                // FunctionExpressionNameScope.
+                this.scopeManager.nestFunctionExpressionNameScope(node);
+            }
+        }
+        else if (node.id) {
             // id is defined in upper scope
-            this.currentScope().__define(node.id,
-                new Definition(
-                    Variable.FunctionName,
-                    node.id,
-                    node,
-                    null,
-                    null,
-                    null
-                ));
+            this.currentScope().defineIdentifier(node.id, new definition_1.FunctionNameDefinition(node.id, node));
         }
-
-        // FunctionExpression with name creates its special scope;
-        // FunctionExpressionNameScope.
-        if (node.type === Syntax.FunctionExpression && node.id) {
-            this.scopeManager.__nestFunctionExpressionNameScope(node);
-        }
-
         // Consider this function is in the MethodDefinition.
-        this.scopeManager.__nestFunctionScope(node, this.isInnerMethodDefinition);
-
-        const that = this;
-
-        /**
-         * Visit pattern callback
-         * @param {pattern} pattern pattern
-         * @param {Object} info info
-         * @returns {void}
-         */
-        function visitPatternCallback(pattern, info) {
-            that.currentScope().__define(pattern,
-                new ParameterDefinition(
-                    pattern,
-                    node,
-                    i,
-                    info.rest
-                ));
-
-            that.referencingDefaultValue(pattern, info.assignments, null, true);
-        }
-
+        this.scopeManager.nestFunctionScope(node, false);
         // Process parameter declarations.
-        for (i = 0, iz = node.params.length; i < iz; ++i) {
-            this.visitPattern(node.params[i], { processRightHandNodes: true }, visitPatternCallback);
+        for (const param of node.params) {
+            this.visitPattern(param, (pattern, info) => {
+                this.currentScope().defineIdentifier(pattern, new definition_1.ParameterDefinition(pattern, node, info.rest));
+                this.referencingDefaultValue(pattern, info.assignments, null, true);
+            }, { processRightHandNodes: true });
+            this.visitFunctionParameterTypeAnnotation(param);
+            param.decorators.forEach(d => this.visit(d));
         }
-
-        // if there's a rest argument, add that
-        if (node.rest) {
-            this.visitPattern({
-                type: "RestElement",
-                argument: node.rest
-            }, pattern => {
-                this.currentScope().__define(pattern,
-                    new ParameterDefinition(
-                        pattern,
-                        node,
-                        node.params.length,
-                        true
-                    ));
-            });
-        }
-
+        this.visitType(node.returnType);
+        this.visitType(node.typeParameters);
         // In TypeScript there are a number of function-like constructs which have no body,
         // so check it exists before traversing
         if (node.body) {
-
             // Skip BlockStatement to prevent creating BlockStatement scope.
-            if (node.body.type === Syntax.BlockStatement) {
+            if (node.body.type === types_1.AST_NODE_TYPES.BlockStatement) {
                 this.visitChildren(node.body);
-            } else {
+            }
+            else {
                 this.visit(node.body);
             }
         }
-
         this.close(node);
     }
-
-    visitClass(node) {
-        if (node.type === Syntax.ClassDeclaration) {
-            this.currentScope().__define(node.id,
-                new Definition(
-                    Variable.ClassName,
-                    node.id,
-                    node,
-                    null,
-                    null,
-                    null
-                ));
-        }
-
-        this.visit(node.superClass);
-
-        this.scopeManager.__nestClassScope(node);
-
-        if (node.id) {
-            this.currentScope().__define(node.id,
-                new Definition(
-                    Variable.ClassName,
-                    node.id,
-                    node
-                ));
-        }
-        this.visit(node.body);
-
-        this.close(node);
-    }
-
     visitProperty(node) {
-        let previous;
-
         if (node.computed) {
             this.visit(node.key);
         }
-
-        const isMethodDefinition = node.type === Syntax.MethodDefinition;
-
-        if (isMethodDefinition) {
-            previous = this.pushInnerMethodDefinition(true);
-        }
         this.visit(node.value);
-        if (isMethodDefinition) {
-            this.popInnerMethodDefinition(previous);
-        }
     }
-
-    visitForIn(node) {
-        if (node.left.type === Syntax.VariableDeclaration && node.left.kind !== "var") {
-            this.scopeManager.__nestForScope(node);
+    visitType(node) {
+        if (!node) {
+            return;
         }
-
-        if (node.left.type === Syntax.VariableDeclaration) {
-            this.visit(node.left);
-            this.visitPattern(node.left.declarations[0].id, pattern => {
-                this.currentScope().__referencing(pattern, Reference.WRITE, node.right, null, true, true);
-            });
-        } else {
-            this.visitPattern(node.left, { processRightHandNodes: true }, (pattern, info) => {
-                let maybeImplicitGlobal = null;
-
-                if (!this.currentScope().isStrict) {
-                    maybeImplicitGlobal = {
-                        pattern,
-                        node
-                    };
-                }
-                this.referencingDefaultValue(pattern, info.assignments, maybeImplicitGlobal, false);
-                this.currentScope().__referencing(pattern, Reference.WRITE, node.right, maybeImplicitGlobal, true, false);
-            });
-        }
-        this.visit(node.right);
-        this.visit(node.body);
-
-        this.close(node);
+        TypeVisitor_1.TypeVisitor.visit(this, node);
     }
-
-    visitVariableDeclaration(variableTargetScope, type, node, index) {
-
-        const decl = node.declarations[index];
-        const init = decl.init;
-
-        this.visitPattern(decl.id, { processRightHandNodes: true }, (pattern, info) => {
-            variableTargetScope.__define(
-                pattern,
-                new Definition(
-                    type,
-                    pattern,
-                    decl,
-                    node,
-                    index,
-                    node.kind
-                )
-            );
-
-            this.referencingDefaultValue(pattern, info.assignments, null, true);
-            if (init) {
-                this.currentScope().__referencing(pattern, Reference.WRITE, init, null, !info.topLevel, true);
-            }
-        });
+    visitTypeAssertion(node) {
+        this.visit(node.expression);
+        this.visitType(node.typeAnnotation);
     }
-
+    /////////////////////
+    // Visit selectors //
+    /////////////////////
+    ArrowFunctionExpression(node) {
+        this.visitFunction(node);
+    }
     AssignmentExpression(node) {
-        if (PatternVisitor.isPattern(node.left)) {
-            if (node.operator === "=") {
-                this.visitPattern(node.left, { processRightHandNodes: true }, (pattern, info) => {
-                    let maybeImplicitGlobal = null;
-
-                    if (!this.currentScope().isStrict) {
-                        maybeImplicitGlobal = {
+        let left = node.left;
+        switch (left.type) {
+            case types_1.AST_NODE_TYPES.TSAsExpression:
+            case types_1.AST_NODE_TYPES.TSTypeAssertion:
+                // explicitly visit the type annotation
+                this.visitType(left.typeAnnotation);
+            // intentional fallthrough
+            case types_1.AST_NODE_TYPES.TSNonNullExpression:
+                // unwrap the expression
+                left = left.expression;
+        }
+        if (PatternVisitor_1.PatternVisitor.isPattern(left)) {
+            if (node.operator === '=') {
+                this.visitPattern(left, (pattern, info) => {
+                    const maybeImplicitGlobal = !this.currentScope().isStrict
+                        ? {
                             pattern,
-                            node
-                        };
-                    }
+                            node,
+                        }
+                        : null;
                     this.referencingDefaultValue(pattern, info.assignments, maybeImplicitGlobal, false);
-                    this.currentScope().__referencing(pattern, Reference.WRITE, node.right, maybeImplicitGlobal, !info.topLevel, false);
-                });
-            } else {
-                this.currentScope().__referencing(node.left, Reference.RW, node.right);
+                    this.currentScope().referenceValue(pattern, Reference_1.ReferenceFlag.Write, node.right, maybeImplicitGlobal, false);
+                }, { processRightHandNodes: true });
             }
-        } else {
-            this.visit(node.left);
+            else if (left.type === types_1.AST_NODE_TYPES.Identifier) {
+                this.currentScope().referenceValue(left, Reference_1.ReferenceFlag.ReadWrite, node.right);
+            }
+        }
+        else {
+            this.visit(left);
         }
         this.visit(node.right);
     }
-
-    CatchClause(node) {
-        this.scopeManager.__nestCatchScope(node);
-
-        this.visitPattern(node.param, { processRightHandNodes: true }, (pattern, info) => {
-            this.currentScope().__define(pattern,
-                new Definition(
-                    Variable.CatchClause,
-                    node.param,
-                    node,
-                    null,
-                    null,
-                    null
-                ));
-            this.referencingDefaultValue(pattern, info.assignments, null, true);
-        });
-        this.visit(node.body);
-
-        this.close(node);
-    }
-
-    Program(node) {
-        this.scopeManager.__nestGlobalScope(node);
-
-        if (this.scopeManager.isGlobalReturn()) {
-
-            // Force strictness of GlobalScope to false when using node.js scope.
-            this.currentScope().isStrict = false;
-            this.scopeManager.__nestFunctionScope(node, false);
-        }
-
-        if (this.scopeManager.__isES6() && this.scopeManager.isModule()) {
-            this.scopeManager.__nestModuleScope(node);
-        }
-
-        if (this.scopeManager.isStrictModeSupported() && this.scopeManager.isImpliedStrict()) {
-            this.currentScope().isStrict = true;
-        }
-
+    BlockStatement(node) {
+        this.scopeManager.nestBlockScope(node);
         this.visitChildren(node);
         this.close(node);
     }
-
-    Identifier(node) {
-        this.currentScope().__referencing(node);
+    BreakStatement() {
+        // don't reference the break statement's label
     }
-
-    // eslint-disable-next-line class-methods-use-this
-    PrivateIdentifier() {
-
-        // Do nothing.
+    CallExpression(node) {
+        this.visitChildren(node, ['typeArguments']);
+        this.visitType(node.typeArguments);
     }
-
-    UpdateExpression(node) {
-        if (PatternVisitor.isPattern(node.argument)) {
-            this.currentScope().__referencing(node.argument, Reference.RW, null);
-        } else {
-            this.visitChildren(node);
+    CatchClause(node) {
+        this.scopeManager.nestCatchScope(node);
+        if (node.param) {
+            const param = node.param;
+            this.visitPattern(param, (pattern, info) => {
+                this.currentScope().defineIdentifier(pattern, new definition_1.CatchClauseDefinition(param, node));
+                this.referencingDefaultValue(pattern, info.assignments, null, true);
+            }, { processRightHandNodes: true });
+        }
+        this.visit(node.body);
+        this.close(node);
+    }
+    ClassExpression(node) {
+        this.visitClass(node);
+    }
+    ClassDeclaration(node) {
+        this.visitClass(node);
+    }
+    ContinueStatement() {
+        // don't reference the continue statement's label
+    }
+    ExportAllDeclaration() {
+        // this defines no local variables
+    }
+    ExportDefaultDeclaration(node) {
+        if (node.declaration.type === types_1.AST_NODE_TYPES.Identifier) {
+            ExportVisitor_1.ExportVisitor.visit(this, node);
+        }
+        else {
+            this.visit(node.declaration);
         }
     }
-
+    TSExportAssignment(node) {
+        if (node.expression.type === types_1.AST_NODE_TYPES.Identifier) {
+            // this is a special case - you can `export = T` where `T` is a type OR a
+            // value however `T[U]` is illegal when `T` is a type and `T.U` is illegal
+            // when `T.U` is a type
+            // i.e. if the expression is JUST an Identifier - it could be either ref
+            // kind; otherwise the standard rules apply
+            this.currentScope().referenceDualValueType(node.expression);
+        }
+        else {
+            this.visit(node.expression);
+        }
+    }
+    ExportNamedDeclaration(node) {
+        if (node.declaration) {
+            this.visit(node.declaration);
+        }
+        else {
+            ExportVisitor_1.ExportVisitor.visit(this, node);
+        }
+    }
+    ForInStatement(node) {
+        this.visitForIn(node);
+    }
+    ForOfStatement(node) {
+        this.visitForIn(node);
+    }
+    ForStatement(node) {
+        // Create ForStatement declaration.
+        // NOTE: In ES6, ForStatement dynamically generates per iteration environment. However, this is
+        // a static analyzer, we only generate one scope for ForStatement.
+        if (node.init &&
+            node.init.type === types_1.AST_NODE_TYPES.VariableDeclaration &&
+            node.init.kind !== 'var') {
+            this.scopeManager.nestForScope(node);
+        }
+        this.visitChildren(node);
+        this.close(node);
+    }
+    FunctionDeclaration(node) {
+        this.visitFunction(node);
+    }
+    FunctionExpression(node) {
+        this.visitFunction(node);
+    }
+    Identifier(node) {
+        this.currentScope().referenceValue(node);
+        this.visitType(node.typeAnnotation);
+    }
+    ImportDeclaration(node) {
+        (0, assert_1.assert)(this.scopeManager.isModule(), 'ImportDeclaration should appear when the mode is ES6 and in the module context.');
+        ImportVisitor_1.ImportVisitor.visit(this, node);
+    }
+    JSXAttribute(node) {
+        this.visit(node.value);
+    }
+    JSXClosingElement() {
+        // should not be counted as a reference
+    }
+    JSXFragment(node) {
+        this.referenceJsxPragma();
+        this.referenceJsxFragment();
+        this.visitChildren(node);
+    }
+    JSXIdentifier(node) {
+        this.currentScope().referenceValue(node);
+    }
+    JSXMemberExpression(node) {
+        if (node.object.type !== types_1.AST_NODE_TYPES.JSXIdentifier) {
+            this.visit(node.object);
+        }
+        else if (node.object.name !== 'this') {
+            this.visit(node.object);
+        }
+        // we don't ever reference the property as it's always going to be a property on the thing
+    }
+    JSXOpeningElement(node) {
+        this.referenceJsxPragma();
+        if (node.name.type === types_1.AST_NODE_TYPES.JSXIdentifier) {
+            if (node.name.name[0].toUpperCase() === node.name.name[0] ||
+                node.name.name === 'this') {
+                // lower cased component names are always treated as "intrinsic" names, and are converted to a string,
+                // not a variable by JSX transforms:
+                // <div /> => React.createElement("div", null)
+                // the only case we want to visit a lower-cased component has its name as "this",
+                this.visit(node.name);
+            }
+        }
+        else {
+            this.visit(node.name);
+        }
+        this.visitType(node.typeArguments);
+        for (const attr of node.attributes) {
+            this.visit(attr);
+        }
+    }
+    LabeledStatement(node) {
+        this.visit(node.body);
+    }
     MemberExpression(node) {
         this.visit(node.object);
         if (node.computed) {
             this.visit(node.property);
         }
     }
-
+    MetaProperty() {
+        // meta properties all builtin globals
+    }
+    NewExpression(node) {
+        this.visitChildren(node, ['typeArguments']);
+        this.visitType(node.typeArguments);
+    }
+    PrivateIdentifier() {
+        // private identifiers are members on classes and thus have no variables to to reference
+    }
+    Program(node) {
+        const globalScope = this.scopeManager.nestGlobalScope(node);
+        this.populateGlobalsFromLib(globalScope);
+        if (this.scopeManager.isGlobalReturn()) {
+            // Force strictness of GlobalScope to false when using node.js scope.
+            this.currentScope().isStrict = false;
+            this.scopeManager.nestFunctionScope(node, false);
+        }
+        if (this.scopeManager.isModule()) {
+            this.scopeManager.nestModuleScope(node);
+        }
+        if (this.scopeManager.isImpliedStrict()) {
+            this.currentScope().isStrict = true;
+        }
+        this.visitChildren(node);
+        this.close(node);
+    }
     Property(node) {
         this.visitProperty(node);
     }
-
-    PropertyDefinition(node) {
-        const { computed, key, value } = node;
-
-        if (computed) {
-            this.visit(key);
-        }
-        if (value) {
-            this.scopeManager.__nestClassFieldInitializerScope(value);
-            this.visit(value);
-            this.close(value);
-        }
-    }
-
-    StaticBlock(node) {
-        this.scopeManager.__nestClassStaticBlockScope(node);
-
-        this.visitChildren(node);
-
-        this.close(node);
-    }
-
-    MethodDefinition(node) {
-        this.visitProperty(node);
-    }
-
-    BreakStatement() {} // eslint-disable-line class-methods-use-this
-
-    ContinueStatement() {} // eslint-disable-line class-methods-use-this
-
-    LabeledStatement(node) {
-        this.visit(node.body);
-    }
-
-    ForStatement(node) {
-
-        // Create ForStatement declaration.
-        // NOTE: In ES6, ForStatement dynamically generates
-        // per iteration environment. However, escope is
-        // a static analyzer, we only generate one scope for ForStatement.
-        if (node.init && node.init.type === Syntax.VariableDeclaration && node.init.kind !== "var") {
-            this.scopeManager.__nestForScope(node);
-        }
-
-        this.visitChildren(node);
-
-        this.close(node);
-    }
-
-    ClassExpression(node) {
-        this.visitClass(node);
-    }
-
-    ClassDeclaration(node) {
-        this.visitClass(node);
-    }
-
-    CallExpression(node) {
-
-        // Check this is direct call to eval
-        if (!this.scopeManager.__ignoreEval() && node.callee.type === Syntax.Identifier && node.callee.name === "eval") {
-
-            // NOTE: This should be `variableScope`. Since direct eval call always creates Lexical environment and
-            // let / const should be enclosed into it. Only VariableDeclaration affects on the caller's environment.
-            this.currentScope().variableScope.__detectEval();
-        }
-        this.visitChildren(node);
-    }
-
-    BlockStatement(node) {
-        if (this.scopeManager.__isES6()) {
-            this.scopeManager.__nestBlockScope(node);
-        }
-
-        this.visitChildren(node);
-
-        this.close(node);
-    }
-
-    ThisExpression() {
-        this.currentScope().variableScope.__detectThis();
-    }
-
-    WithStatement(node) {
-        this.visit(node.object);
-
-        // Then nest scope for WithStatement.
-        this.scopeManager.__nestWithScope(node);
-
-        this.visit(node.body);
-
-        this.close(node);
-    }
-
-    VariableDeclaration(node) {
-        const variableTargetScope = (node.kind === "var") ? this.currentScope().variableScope : this.currentScope();
-
-        for (let i = 0, iz = node.declarations.length; i < iz; ++i) {
-            const decl = node.declarations[i];
-
-            this.visitVariableDeclaration(variableTargetScope, Variable.Variable, node, i);
-            if (decl.init) {
-                this.visit(decl.init);
-            }
-        }
-    }
-
-    // sec 13.11.8
     SwitchStatement(node) {
         this.visit(node.discriminant);
-
-        if (this.scopeManager.__isES6()) {
-            this.scopeManager.__nestSwitchScope(node);
+        this.scopeManager.nestSwitchScope(node);
+        for (const switchCase of node.cases) {
+            this.visit(switchCase);
         }
-
-        for (let i = 0, iz = node.cases.length; i < iz; ++i) {
-            this.visit(node.cases[i]);
-        }
-
         this.close(node);
     }
-
-    FunctionDeclaration(node) {
+    TaggedTemplateExpression(node) {
+        this.visit(node.tag);
+        this.visit(node.quasi);
+        this.visitType(node.typeArguments);
+    }
+    TSAsExpression(node) {
+        this.visitTypeAssertion(node);
+    }
+    TSDeclareFunction(node) {
         this.visitFunction(node);
     }
-
-    FunctionExpression(node) {
-        this.visitFunction(node);
-    }
-
-    ForOfStatement(node) {
-        this.visitForIn(node);
-    }
-
-    ForInStatement(node) {
-        this.visitForIn(node);
-    }
-
-    ArrowFunctionExpression(node) {
-        this.visitFunction(node);
-    }
-
-    ImportDeclaration(node) {
-        assert(this.scopeManager.__isES6() && this.scopeManager.isModule(), "ImportDeclaration should appear when the mode is ES6 and in the module context.");
-
-        const importer = new Importer(node, this);
-
-        importer.visit(node);
-    }
-
-    visitExportDeclaration(node) {
-        if (node.source) {
-            return;
+    TSImportEqualsDeclaration(node) {
+        this.currentScope().defineIdentifier(node.id, new definition_1.ImportBindingDefinition(node.id, node, node));
+        if (node.moduleReference.type === types_1.AST_NODE_TYPES.TSQualifiedName) {
+            this.visit(node.moduleReference.left);
         }
-        if (node.declaration) {
-            this.visit(node.declaration);
-            return;
+        else {
+            this.visit(node.moduleReference);
         }
-
-        this.visitChildren(node);
     }
-
-    // TODO: ExportDeclaration doesn't exist. for bc?
-    ExportDeclaration(node) {
-        this.visitExportDeclaration(node);
+    TSEmptyBodyFunctionExpression(node) {
+        this.visitFunction(node);
     }
-
-    ExportAllDeclaration(node) {
-        this.visitExportDeclaration(node);
+    TSEnumDeclaration(node) {
+        this.currentScope().defineIdentifier(node.id, new definition_1.TSEnumNameDefinition(node.id, node));
+        // enum members can be referenced within the enum body
+        this.scopeManager.nestTSEnumScope(node);
+        // define the enum name again inside the new enum scope
+        // references to the enum should not resolve directly to the enum
+        this.currentScope().defineIdentifier(node.id, new definition_1.TSEnumNameDefinition(node.id, node));
+        for (const member of node.members) {
+            // TS resolves literal named members to be actual names
+            // enum Foo {
+            //   'a' = 1,
+            //   b = a, // this references the 'a' member
+            // }
+            if (member.id.type === types_1.AST_NODE_TYPES.Literal &&
+                typeof member.id.value === 'string') {
+                const name = member.id;
+                this.currentScope().defineLiteralIdentifier(name, new definition_1.TSEnumMemberDefinition(name, member));
+            }
+            else if (!member.computed &&
+                member.id.type === types_1.AST_NODE_TYPES.Identifier) {
+                this.currentScope().defineIdentifier(member.id, new definition_1.TSEnumMemberDefinition(member.id, member));
+            }
+            this.visit(member.initializer);
+        }
+        this.close(node);
     }
-
-    ExportDefaultDeclaration(node) {
-        this.visitExportDeclaration(node);
+    TSInstantiationExpression(node) {
+        this.visitChildren(node, ['typeArguments']);
+        this.visitType(node.typeArguments);
     }
-
-    ExportNamedDeclaration(node) {
-        this.visitExportDeclaration(node);
+    TSInterfaceDeclaration(node) {
+        this.visitType(node);
     }
-
-    ExportSpecifier(node) {
-
-        // TODO: `node.id` doesn't exist. for bc?
-        const local = (node.id || node.local);
-
-        this.visit(local);
+    TSModuleDeclaration(node) {
+        if (node.id.type === types_1.AST_NODE_TYPES.Identifier && node.kind !== 'global') {
+            this.currentScope().defineIdentifier(node.id, new definition_1.TSModuleNameDefinition(node.id, node));
+        }
+        this.scopeManager.nestTSModuleScope(node);
+        this.visit(node.body);
+        this.close(node);
     }
-
-    MetaProperty() { // eslint-disable-line class-methods-use-this
-
-        // do nothing.
+    TSSatisfiesExpression(node) {
+        this.visitTypeAssertion(node);
+    }
+    TSTypeAliasDeclaration(node) {
+        this.visitType(node);
+    }
+    TSTypeAssertion(node) {
+        this.visitTypeAssertion(node);
+    }
+    UpdateExpression(node) {
+        if (PatternVisitor_1.PatternVisitor.isPattern(node.argument)) {
+            this.visitPattern(node.argument, pattern => {
+                this.currentScope().referenceValue(pattern, Reference_1.ReferenceFlag.ReadWrite, null);
+            });
+        }
+        else {
+            this.visitChildren(node);
+        }
+    }
+    VariableDeclaration(node) {
+        const variableTargetScope = node.kind === 'var'
+            ? this.currentScope().variableScope
+            : this.currentScope();
+        for (const decl of node.declarations) {
+            const init = decl.init;
+            this.visitPattern(decl.id, (pattern, info) => {
+                variableTargetScope.defineIdentifier(pattern, new definition_1.VariableDefinition(pattern, decl, node));
+                this.referencingDefaultValue(pattern, info.assignments, null, true);
+                if (init) {
+                    this.currentScope().referenceValue(pattern, Reference_1.ReferenceFlag.Write, init, null, true);
+                }
+            }, { processRightHandNodes: true });
+            this.visit(decl.init);
+            this.visitType(decl.id.typeAnnotation);
+        }
+    }
+    WithStatement(node) {
+        this.visit(node.object);
+        // Then nest scope for WithStatement.
+        this.scopeManager.nestWithScope(node);
+        this.visit(node.body);
+        this.close(node);
+    }
+    ImportAttribute() {
+        // import assertions are module metadata and thus have no variables to reference
     }
 }
-
-export default Referencer;
-
-/* vim: set sw=4 ts=4 et tw=80 : */
+exports.Referencer = Referencer;
+_Referencer_jsxPragma = new WeakMap(), _Referencer_jsxFragmentName = new WeakMap(), _Referencer_hasReferencedJsxFactory = new WeakMap(), _Referencer_hasReferencedJsxFragmentFactory = new WeakMap(), _Referencer_lib = new WeakMap();
+//# sourceMappingURL=Referencer.js.map

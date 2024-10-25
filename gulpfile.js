@@ -1,70 +1,137 @@
-/*
-  Copyright (C) 2014 Yusuke Suzuki <utatane.tea@gmail.com>
+var gulp = require('gulp');
+var plugin = require('gulp-load-plugins')();
+var fs = require('fs');
+var exec = require('child_process').exec;
+var argv = require('minimist')(process.argv.slice(2));
 
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
+var path = {
+    rootdir: './',
+    lib: ['./lib/**/*.js'],
+    libdir: './lib/',
+    test: ['./test/**/*.js'],
+    testdir: './test/',
+    build: ['package.json', 'component.json', 'bower.json', 'README.md', 'speakingurl.min.js'],
+    json: ['package.json', 'component.json', 'bower.json'],
+    readme: './README.md',
 
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
+    target: './speakingurl.min.js'
+};
 
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 'AS IS'
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+var banner = ['/**',
+    ' * <%= pkg.name %>',
+    ' * @version v<%= pkg.version %>',
+    ' * @link <%= pkg.homepage %>',
+    ' * @license <%= pkg.licenses[0].type %>',
+    ' * @author <%= pkg.author.name %>',
+    ' */'
+].join('\n');
 
-'use strict';
+gulp.task('beautify', function (done) {
 
-var gulp = require('gulp'),
-    git = require('gulp-git'),
-    bump = require('gulp-bump'),
-    filter = require('gulp-filter'),
-    tagVersion = require('gulp-tag-version');
+    gulp.src(path.lib)
+        .pipe(plugin.jsbeautifier({
+            config: '.jsbeautifyrc',
+            mode: 'VERIFY_AND_WRITE'
+        }))
+        .pipe(gulp.dest(path.libdir));
 
-var TEST = [ 'test/*.js' ];
-var POWERED = [ 'powered-test/*.js' ];
-var SOURCE = [ 'src/**/*.js' ];
+    gulp.src(path.test)
+        .pipe(plugin.jsbeautifier({
+            config: '.jsbeautifyrc',
+            mode: 'VERIFY_AND_WRITE'
+        }))
+        .pipe(gulp.dest(path.testdir));
 
-/**
- * Bumping version number and tagging the repository with it.
- * Please read http://semver.org/
- *
- * You can use the commands
- *
- *     gulp patch     # makes v0.1.0 -> v0.1.1
- *     gulp feature   # makes v0.1.1 -> v0.2.0
- *     gulp release   # makes v0.2.1 -> v1.0.0
- *
- * To bump the version numbers accordingly after you did a patch,
- * introduced a feature or made a backwards-incompatible release.
- */
+    gulp.src(path.json)
+        .pipe(plugin.jsbeautifier({
+            config: '.jsbeautifyrc',
+            mode: 'VERIFY_AND_WRITE'
+        }))
+        .pipe(gulp.dest(path.rootdir));
 
-function inc(importance) {
-    // get all the files to bump version in
-    return gulp.src(['./package.json'])
-        // bump the version number in those files
-        .pipe(bump({type: importance}))
-        // save it back to filesystem
-        .pipe(gulp.dest('./'))
-        // commit the changed version number
-        .pipe(git.commit('Bumps package version'))
-        // read only one file to get the version number
-        .pipe(filter('package.json'))
-        // **tag it in the repository**
-        .pipe(tagVersion({
-            prefix: ''
+    done();
+});
+
+gulp.task('test', function () {
+
+    return gulp.src(path.test, {
+            read: false
+        })
+        .pipe(plugin.mocha({
+            reporter: 'spec',
+            globals: {
+                should: require('should')
+            }
         }));
-}
+});
 
-gulp.task('patch', [ ], function () { return inc('patch'); })
-gulp.task('minor', [ ], function () { return inc('minor'); })
-gulp.task('major', [ ], function () { return inc('major'); })
+gulp.task('jshint', ['beautify'], function () {
+
+    return gulp.src(path.lib, path.json)
+        .pipe(plugin.jshint('.jshintrc'), {
+            verbose: true
+        })
+        .pipe(plugin.jshint.reporter('jshint-stylish'));
+});
+
+gulp.task('uglify', ['jshint'], function (done) {
+
+    var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+
+    return gulp.src(path.lib)
+        .pipe(plugin.uglify())
+        .pipe(plugin.header(banner, {
+            pkg: pkg
+        }))
+        .pipe(plugin.rename(path.target))
+        .pipe(gulp.dest(path.rootdir));
+});
+
+gulp.task('bumpup', ['bumpup-version'], function () {
+
+    var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+
+    // insert newsest version
+    return gulp.src(path.readme)
+        .pipe(plugin.replace(
+            /cdnjs.cloudflare.com\/ajax\/libs\/speakingurl\/\d{1,1}\.\d{1,2}\.\d{1,2}\/speakingurl.min.js/g,
+            'cdnjs.cloudflare.com/ajax/libs/speakingurl/' + pkg.version + '/speakingurl.min.js'))
+        .pipe(plugin.replace(
+            /cdn.jsdelivr.net\/speakingurl\/\d{1,1}\.\d{1,2}\.\d{1,2}\/speakingurl.min.js/g,
+            'cdn.jsdelivr.net/speakingurl/' + pkg.version + '/speakingurl.min.js'))
+        .pipe(gulp.dest(path.rootdir));
+});
+
+gulp.task('bumpup-version', function () {
+
+    return gulp.src(path.json)
+        .pipe(plugin.bump({
+            type: argv.major ? 'major' : (argv.minor ? 'minor' : 'patch')
+        }))
+        .pipe(gulp.dest(path.rootdir));
+});
+
+gulp.task('release', function (done) {
+
+    var pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+    var tag = 'v' + pkg.version;
+    var message = 'Release ' + tag;
+    var execute = [
+        'npm rm speakingurl -g',
+        'npm install . -g',
+        'git add .',
+        'git commit -m "Release ' + tag + '"',
+        'git tag ' + tag + ' -m "Release ' + tag + '"',
+        'git push -u origin master',
+        'git push -u origin master --tags',
+        'npm publish'
+    ].join('\n');
+
+    exec(execute, done());
+});
+
+gulp.task('watch', function () {
+    gulp.watch([path.json, path.lib], ['jshint', 'test']);
+});
+
+gulp.task('default', ['test', 'jshint', 'uglify']);

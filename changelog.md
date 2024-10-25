@@ -1,163 +1,212 @@
+## 0.6.3 / 2021-05-23
+  * Fix HKSCS encoding to prefer Big5 codes if both Big5 and HKSCS codes are possible (#264)
 
-# file-entry-cache - Changelog
-## v6.0.1
-- **Other changes**
-  - Delete previous mtime when checksum is used and vice versa - [abcf0f9]( https://github.com/royriojas/file-entry-cache/commit/abcf0f9 ), [Milos Djermanovic](https://github.com/Milos Djermanovic), 19/02/2021 18:19:43
 
-    
-  - Adds travis jobs on ppc64le - [92e4d4a]( https://github.com/royriojas/file-entry-cache/commit/92e4d4a ), [dineshks1](https://github.com/dineshks1), 25/11/2020 04:52:11
+## 0.6.2 / 2020-07-08
+  * Support Uint8Array-s decoding without conversion to Buffers, plus fix an edge case.
 
-    
-## v6.0.0
-- **Refactoring**
-  - Align file-entry-cache with latest eslint - [4c6f1fb]( https://github.com/royriojas/file-entry-cache/commit/4c6f1fb ), [Roy Riojas](https://github.com/Roy Riojas), 08/11/2020 02:43:09
 
-    
-  - Upgrade deps - [8ab3257]( https://github.com/royriojas/file-entry-cache/commit/8ab3257 ), [Roy Riojas](https://github.com/Roy Riojas), 08/11/2020 02:41:53
+## 0.6.1 / 2020-06-28
+  * Support Uint8Array-s directly when decoding (#246, by @gyzerok)
+  * Unify package.json version ranges to be strictly semver-compatible (#241)
+  * Fix minor issue in UTF-32 decoder's endianness detection code.
 
-    
-  - updated packages - [3dd4231]( https://github.com/royriojas/file-entry-cache/commit/3dd4231 ), [Roy Riojas](https://github.com/Roy Riojas), 08/11/2020 02:29:37
 
-    
-  - Upgrade flat-cache to version 3 - [d7c60ef]( https://github.com/royriojas/file-entry-cache/commit/d7c60ef ), [Roy Riojas](https://github.com/Roy Riojas), 08/11/2020 01:18:04
+## 0.6.0 / 2020-06-08
+  * Updated 'gb18030' encoding to :2005 edition (see https://github.com/whatwg/encoding/issues/22).
+  * Removed `iconv.extendNodeEncodings()` mechanism. It was deprecated 5 years ago and didn't work 
+    in recent Node versions.
+  * Reworked Streaming API behavior in browser environments to fix #204. Streaming API will be 
+    excluded by default in browser packs, saving ~100Kb bundle size, unless enabled explicitly using 
+    `iconv.enableStreamingAPI(require('stream'))`.
+  * Updates to development environment & tests:
+    * Added ./test/webpack private package to test complex new use cases that need custom environment. 
+      It's tested as a separate job in Travis CI.
+    * Updated generation code for the new EUC-KR index file format from Encoding Standard.
+    * Removed Buffer() constructor in tests (#197 by @gabrielschulhof).
 
-    
-## v5.0.1
-- **Bug Fixes**
-  - Fix missing checksum comparison from reconcile since now we use mtime and size by default. - [e858aa9]( https://github.com/royriojas/file-entry-cache/commit/e858aa9 ), [Roy Riojas](https://github.com/Roy Riojas), 04/02/2019 09:30:22
 
-    Old mode using checkSum can still be used by passing the `useCheckSum` parameter to the `create` or `createFromFile` methods.
-    
-## v5.0.0
-- **Refactoring**
-  - Make checksum comparison optional - [b0f9ae0]( https://github.com/royriojas/file-entry-cache/commit/b0f9ae0 ), [Roy Riojas](https://github.com/Roy Riojas), 03/02/2019 18:17:39
+## 0.5.2 / 2020-06-08
+  * Added `iconv.getEncoder()` and `iconv.getDecoder()` methods to typescript definitions (#229).
+  * Fixed semver version to 6.1.2 to support Node 8.x (by @tanandara).
+  * Capped iconv version to 2.x as 3.x has dropped support for older Node versions.
+  * Switched from instanbul to c8 for code coverage.
 
-    To determine if a file has changed we were using the checksum in the newer versions, but eslint was relying on the old behavior where we use the mtime and file size to determine if a file changed. That's why we decided to make the checksum check optional.
-    
-    To use it:
-    
-    ```js
-    // to make the cache use the checkSum check do the following:
-    var fCache = fileEntryCache.create(cacheName, dir, useCheckSum); // pass the third parameter as true
-    var otherCache = fileEntryCache.createFromFile(cacheName, useCheckSum); // pass the second parameter as true
-    ```
-    
-## v4.0.0
-- **Build Scripts Changes**
-  - use the same node versions eslint use - [563cfee]( https://github.com/royriojas/file-entry-cache/commit/563cfee ), [Roy Riojas](https://github.com/Roy Riojas), 08/01/2019 20:29:34
 
-    
-- **Other changes**
-  - Remove object-assign dependency. - [d0f598e]( https://github.com/royriojas/file-entry-cache/commit/d0f598e ), [Corey Farrell](https://github.com/Corey Farrell), 08/01/2019 20:09:51
+## 0.5.1 / 2020-01-18
 
-    node.js >=4 is required so object-assign is no longer needed, the native
-    Object.assign can be used instead.
-    
-## v3.0.0
-- **Build Scripts Changes**
-  - Upgrade flat-cache dep to latest - [078b0df]( https://github.com/royriojas/file-entry-cache/commit/078b0df ), [Roy Riojas](https://github.com/Roy Riojas), 08/01/2019 18:54:40
+  * Added cp720 encoding (#221, by @kr-deps)
+  * (minor) Changed Changelog.md formatting to use h2. 
 
-    
-  - Commit new package-lock.json file - [245fe62]( https://github.com/royriojas/file-entry-cache/commit/245fe62 ), [Roy Riojas](https://github.com/Roy Riojas), 08/01/2019 17:56:21
 
-    
-- **Refactoring**
-  - add eslintrc file - [6dd32d8]( https://github.com/royriojas/file-entry-cache/commit/6dd32d8 ), [Roy Riojas](https://github.com/Roy Riojas), 22/08/2018 09:58:17
+## 0.5.0 / 2019-06-26
 
-    
-- **Other changes**
-  - Move variable definition out of else block - [ea05441]( https://github.com/royriojas/file-entry-cache/commit/ea05441 ), [Zakhar Shapurau](https://github.com/Zakhar Shapurau), 25/04/2017 11:19:00
+  * Added UTF-32 encoding, both little-endian and big-endian variants (UTF-32LE, UTF32-BE). If endianness
+    is not provided for decoding, it's deduced automatically from the stream using a heuristic similar to
+    what we use in UTF-16. (great work in #216 by @kshetline)
+  * Several minor updates to README (#217 by @oldj, plus some more)
+  * Added Node versions 10 and 12 to Travis test harness.
 
-    
-  - Add script and cmd to test hash/checksum performance - [7f60e0a]( https://github.com/royriojas/file-entry-cache/commit/7f60e0a ), [Zakhar Shapurau](https://github.com/Zakhar Shapurau), 24/04/2017 14:43:12
 
-    
-  - Calculate md5 hexdigest instead of Adler-32 checksum - [f9e5c69]( https://github.com/royriojas/file-entry-cache/commit/f9e5c69 ), [Zakhar Shapurau](https://github.com/Zakhar Shapurau), 24/04/2017 14:43:12
+## 0.4.24 / 2018-08-22
 
-    
-  - How to reproduce - [4edc2dc]( https://github.com/royriojas/file-entry-cache/commit/4edc2dc ), [Zakhar Shapurau](https://github.com/Zakhar Shapurau), 24/04/2017 13:49:32
+  * Added MIK encoding (#196, by @Ivan-Kalatchev)
 
-    
-  - Test handling of removed files - [09d9ec5]( https://github.com/royriojas/file-entry-cache/commit/09d9ec5 ), [Zakhar Shapurau](https://github.com/Zakhar Shapurau), 19/04/2017 19:51:50
 
-    
-  - Use content checksum instead of mtime and fsize - [343b340]( https://github.com/royriojas/file-entry-cache/commit/343b340 ), [Zakhar Shapurau](https://github.com/Zakhar Shapurau), 19/04/2017 19:51:47
+## 0.4.23 / 2018-05-07
 
-    
-- **Revert**
-  - Revert "How to reproduce" - [4b4e54a]( https://github.com/royriojas/file-entry-cache/commit/4b4e54a ), [Zakhar Shapurau](https://github.com/Zakhar Shapurau), 25/04/2017 11:15:36
+  * Fix deprecation warning in Node v10 due to the last usage of `new Buffer` (#185, by @felixbuenemann)
+  * Switched from NodeBuffer to Buffer in typings (#155 by @felixfbecker, #186 by @larssn)
 
-    This reverts commit 4edc2dcec01574247bfc2e0a2fe26527332b7df3.
-    
-## v2.0.0
-- **Features**
-  - do not persist and prune removed files from cache. Relates to [#2](https://github.com/royriojas/file-entry-cache/issues/2) - [408374d]( https://github.com/royriojas/file-entry-cache/commit/408374d ), [Roy Riojas](https://github.com/Roy Riojas), 16/08/2016 13:47:58
 
-    
-## v1.3.1
-- **Build Scripts Changes**
-  - remove older node version - [0a26ac4]( https://github.com/royriojas/file-entry-cache/commit/0a26ac4 ), [Roy Riojas](https://github.com/Roy Riojas), 01/08/2016 04:09:17
+## 0.4.22 / 2018-05-05
 
-    
-## v1.3.0
-- **Features**
-  - Add an option to not prune non visited keys. Closes [#2](https://github.com/royriojas/file-entry-cache/issues/2) - [b1a64db]( https://github.com/royriojas/file-entry-cache/commit/b1a64db ), [Roy Riojas](https://github.com/Roy Riojas), 01/08/2016 03:52:12
+  * Use older semver style for dependencies to be compatible with Node version 0.10 (#182, by @dougwilson)
+  * Fix tests to accomodate fixes in Node v10 (#182, by @dougwilson)
 
-    
-## v1.2.4
-- **Enhancements**
-  - Expose the flat-cache instance - [f34c557]( https://github.com/royriojas/file-entry-cache/commit/f34c557 ), [royriojas](https://github.com/royriojas), 23/09/2015 18:26:33
 
-    
-## v1.2.3
-- **Build Scripts Changes**
-  - update flat-cache dep - [cc7b9ce]( https://github.com/royriojas/file-entry-cache/commit/cc7b9ce ), [royriojas](https://github.com/royriojas), 11/09/2015 16:04:44
+## 0.4.21 / 2018-04-06
 
-    
-## v1.2.2
-- **Build Scripts Changes**
-  - Add changelogx section to package.json - [a3916ff]( https://github.com/royriojas/file-entry-cache/commit/a3916ff ), [royriojas](https://github.com/royriojas), 11/09/2015 16:00:26
+  * Fix encoding canonicalization (#156)
+  * Fix the paths in the "browser" field in package.json (#174 by @LMLB)
+  * Removed "contributors" section in package.json - see Git history instead.
 
-    
-## v1.2.1
-- **Build Scripts Changes**
-  - update flat-cache dep - [e49b0d4]( https://github.com/royriojas/file-entry-cache/commit/e49b0d4 ), [royriojas](https://github.com/royriojas), 11/09/2015 15:55:25
 
-    
-- **Other changes**
-  - Update dependencies Replaced lodash.assign with smaller object-assign Fixed tests for windows - [0ad3000]( https://github.com/royriojas/file-entry-cache/commit/0ad3000 ), [Bogdan Chadkin](https://github.com/Bogdan Chadkin), 11/09/2015 15:44:18
+## 0.4.20 / 2018-04-06
 
-    
-## v1.2.0
-- **Features**
-  - analyzeFiles now returns also the files that were removed - [6ac2431]( https://github.com/royriojas/file-entry-cache/commit/6ac2431 ), [royriojas](https://github.com/royriojas), 04/09/2015 12:40:53
+  * Updated `new Buffer()` usages with recommended replacements as it's being deprecated in Node v10 (#176, #178 by @ChALkeR)
 
-    
-## v1.1.1
-- **Features**
-  - Add method to check if a file hasChanged - [3640e2b]( https://github.com/royriojas/file-entry-cache/commit/3640e2b ), [Roy Riojas](https://github.com/Roy Riojas), 30/08/2015 05:33:32
 
-    
-## v1.1.0
-- **Features**
-  - Create the cache directly from a file path - [a23de61]( https://github.com/royriojas/file-entry-cache/commit/a23de61 ), [Roy Riojas](https://github.com/Roy Riojas), 30/08/2015 04:41:33
+## 0.4.19 / 2017-09-09
 
-    
-  - Add a method to remove an entry from the filecache - [7af29fc]( https://github.com/royriojas/file-entry-cache/commit/7af29fc ), [Roy Riojas](https://github.com/Roy Riojas), 02/03/2015 23:25:32
+  * Fixed iso8859-1 codec regression in handling untranslatable characters (#162, caused by #147)
+  * Re-generated windows1255 codec, because it was updated in iconv project
+  * Fixed grammar in error message when iconv-lite is loaded with encoding other than utf8
 
-    
-  - cache module finished - [1f95544]( https://github.com/royriojas/file-entry-cache/commit/1f95544 ), [Roy Riojas](https://github.com/Roy Riojas), 02/03/2015 01:08:08
 
-    
-- **Build Scripts Changes**
-  - set the version for the first release - [7472eaa]( https://github.com/royriojas/file-entry-cache/commit/7472eaa ), [Roy Riojas](https://github.com/Roy Riojas), 02/03/2015 01:29:54
+## 0.4.18 / 2017-06-13
 
-    
-- **Documentation**
-  - Updated documentation - [557358f]( https://github.com/royriojas/file-entry-cache/commit/557358f ), [Roy Riojas](https://github.com/Roy Riojas), 02/03/2015 01:29:29
+  * Fixed CESU-8 regression in Node v8.
 
-    
-- **Other changes**
-  - Initial commit - [3d5f42b]( https://github.com/royriojas/file-entry-cache/commit/3d5f42b ), [Roy Riojas](https://github.com/Roy Riojas), 01/03/2015 21:58:29
 
-    
+## 0.4.17 / 2017-04-22
+
+ * Updated typescript definition file to support Angular 2 AoT mode (#153 by @larssn)
+
+
+## 0.4.16 / 2017-04-22
+
+ * Added support for React Native (#150)
+ * Changed iso8859-1 encoding to usine internal 'binary' encoding, as it's the same thing (#147 by @mscdex)
+ * Fixed typo in Readme (#138 by @jiangzhuo)
+ * Fixed build for Node v6.10+ by making correct version comparison
+ * Added a warning if iconv-lite is loaded not as utf-8 (see #142)
+
+
+## 0.4.15 / 2016-11-21
+
+ * Fixed typescript type definition (#137)
+
+
+## 0.4.14 / 2016-11-20
+
+ * Preparation for v1.0
+ * Added Node v6 and latest Node versions to Travis CI test rig
+ * Deprecated Node v0.8 support
+ * Typescript typings (@larssn)
+ * Fix encoding of Euro character in GB 18030 (inspired by @lygstate)
+ * Add ms prefix to dbcs windows encodings (@rokoroku)
+
+
+## 0.4.13 / 2015-10-01
+
+ * Fix silly mistake in deprecation notice.
+
+
+## 0.4.12 / 2015-09-26
+
+ * Node v4 support:
+   * Added CESU-8 decoding (#106)
+   * Added deprecation notice for `extendNodeEncodings`
+   * Added Travis tests for Node v4 and io.js latest (#105 by @Mithgol)
+
+
+## 0.4.11 / 2015-07-03
+
+ * Added CESU-8 encoding.
+
+
+## 0.4.10 / 2015-05-26
+
+ * Changed UTF-16 endianness heuristic to take into account any ASCII chars, not
+   just spaces. This should minimize the importance of "default" endianness.
+
+
+## 0.4.9 / 2015-05-24
+
+ * Streamlined BOM handling: strip BOM by default, add BOM when encoding if 
+   addBOM: true. Added docs to Readme.
+ * UTF16 now uses UTF16-LE by default.
+ * Fixed minor issue with big5 encoding.
+ * Added io.js testing on Travis; updated node-iconv version to test against.
+   Now we just skip testing SBCS encodings that node-iconv doesn't support.
+ * (internal refactoring) Updated codec interface to use classes.
+ * Use strict mode in all files.
+
+
+## 0.4.8 / 2015-04-14
+ 
+ * added alias UNICODE-1-1-UTF-7 for UTF-7 encoding (#94)
+
+
+## 0.4.7 / 2015-02-05
+
+ * stop official support of Node.js v0.8. Should still work, but no guarantees.
+   reason: Packages needed for testing are hard to get on Travis CI.
+ * work in environment where Object.prototype is monkey patched with enumerable 
+   props (#89).
+
+
+## 0.4.6 / 2015-01-12
+ 
+ * fix rare aliases of single-byte encodings (thanks @mscdex)
+ * double the timeout for dbcs tests to make them less flaky on travis
+
+
+## 0.4.5 / 2014-11-20
+
+ * fix windows-31j and x-sjis encoding support (@nleush)
+ * minor fix: undefined variable reference when internal error happens
+
+
+## 0.4.4 / 2014-07-16
+
+ * added encodings UTF-7 (RFC2152) and UTF-7-IMAP (RFC3501 Section 5.1.3)
+ * fixed streaming base64 encoding
+
+
+## 0.4.3 / 2014-06-14
+
+ * added encodings UTF-16BE and UTF-16 with BOM
+
+
+## 0.4.2 / 2014-06-12
+
+ * don't throw exception if `extendNodeEncodings()` is called more than once
+
+
+## 0.4.1 / 2014-06-11
+
+ * codepage 808 added
+
+
+## 0.4.0 / 2014-06-10
+
+ * code is rewritten from scratch
+ * all widespread encodings are supported
+ * streaming interface added
+ * browserify compatibility added
+ * (optional) extend core primitive encodings to make usage even simpler
+ * moved from vows to mocha as the testing framework
+
+

@@ -1,166 +1,107 @@
-/*
-  Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-const READ = 0x1;
-const WRITE = 0x2;
-const RW = READ | WRITE;
-
+"use strict";
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
+var _Reference_flag, _Reference_referenceType;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ReferenceTypeFlag = exports.ReferenceFlag = exports.Reference = void 0;
+const ID_1 = require("../ID");
+var ReferenceFlag;
+(function (ReferenceFlag) {
+    ReferenceFlag[ReferenceFlag["Read"] = 1] = "Read";
+    ReferenceFlag[ReferenceFlag["Write"] = 2] = "Write";
+    ReferenceFlag[ReferenceFlag["ReadWrite"] = 3] = "ReadWrite";
+})(ReferenceFlag || (exports.ReferenceFlag = ReferenceFlag = {}));
+const generator = (0, ID_1.createIdGenerator)();
+var ReferenceTypeFlag;
+(function (ReferenceTypeFlag) {
+    ReferenceTypeFlag[ReferenceTypeFlag["Value"] = 1] = "Value";
+    ReferenceTypeFlag[ReferenceTypeFlag["Type"] = 2] = "Type";
+})(ReferenceTypeFlag || (exports.ReferenceTypeFlag = ReferenceTypeFlag = {}));
 /**
  * A Reference represents a single occurrence of an identifier in code.
- * @constructor Reference
  */
 class Reference {
-    constructor(ident, scope, flag, writeExpr, maybeImplicitGlobal, partial, init) {
-
+    /**
+     * True if this reference can reference types
+     */
+    get isTypeReference() {
+        return (__classPrivateFieldGet(this, _Reference_referenceType, "f") & ReferenceTypeFlag.Type) !== 0;
+    }
+    /**
+     * True if this reference can reference values
+     */
+    get isValueReference() {
+        return (__classPrivateFieldGet(this, _Reference_referenceType, "f") & ReferenceTypeFlag.Value) !== 0;
+    }
+    constructor(identifier, scope, flag, writeExpr, maybeImplicitGlobal, init, referenceType = ReferenceTypeFlag.Value) {
         /**
-         * Identifier syntax node.
-         * @member {espreeIdentifier} Reference#identifier
+         * A unique ID for this instance - primarily used to help debugging and testing
          */
-        this.identifier = ident;
-
+        this.$id = generator();
         /**
-         * Reference to the enclosing Scope.
-         * @member {Scope} Reference#from
+         * The read-write mode of the reference.
          */
+        _Reference_flag.set(this, void 0);
+        /**
+         * In some cases, a reference may be a type, value or both a type and value reference.
+         */
+        _Reference_referenceType.set(this, void 0);
+        this.identifier = identifier;
         this.from = scope;
-
-        /**
-         * Whether the reference comes from a dynamic scope (such as 'eval',
-         * 'with', etc.), and may be trapped by dynamic scopes.
-         * @member {boolean} Reference#tainted
-         */
-        this.tainted = false;
-
-        /**
-         * The variable this reference is resolved with.
-         * @member {Variable} Reference#resolved
-         */
         this.resolved = null;
-
-        /**
-         * The read-write mode of the reference. (Value is one of {@link
-         * Reference.READ}, {@link Reference.RW}, {@link Reference.WRITE}).
-         * @member {number} Reference#flag
-         * @private
-         */
-        this.flag = flag;
+        __classPrivateFieldSet(this, _Reference_flag, flag, "f");
         if (this.isWrite()) {
-
-            /**
-             * If reference is writeable, this is the tree being written to it.
-             * @member {espreeNode} Reference#writeExpr
-             */
             this.writeExpr = writeExpr;
-
-            /**
-             * Whether the Reference might refer to a partial value of writeExpr.
-             * @member {boolean} Reference#partial
-             */
-            this.partial = partial;
-
-            /**
-             * Whether the Reference is to write of initialization.
-             * @member {boolean} Reference#init
-             */
             this.init = init;
         }
-        this.__maybeImplicitGlobal = maybeImplicitGlobal;
+        this.maybeImplicitGlobal = maybeImplicitGlobal;
+        __classPrivateFieldSet(this, _Reference_referenceType, referenceType, "f");
     }
-
-    /**
-     * Whether the reference is static.
-     * @function Reference#isStatic
-     * @returns {boolean} static
-     */
-    isStatic() {
-        return !this.tainted && this.resolved && this.resolved.scope.isStatic();
-    }
-
     /**
      * Whether the reference is writeable.
-     * @function Reference#isWrite
-     * @returns {boolean} write
+     * @public
      */
     isWrite() {
-        return !!(this.flag & Reference.WRITE);
+        return !!(__classPrivateFieldGet(this, _Reference_flag, "f") & ReferenceFlag.Write);
     }
-
     /**
      * Whether the reference is readable.
-     * @function Reference#isRead
-     * @returns {boolean} read
+     * @public
      */
     isRead() {
-        return !!(this.flag & Reference.READ);
+        return !!(__classPrivateFieldGet(this, _Reference_flag, "f") & ReferenceFlag.Read);
     }
-
     /**
      * Whether the reference is read-only.
-     * @function Reference#isReadOnly
-     * @returns {boolean} read only
+     * @public
      */
     isReadOnly() {
-        return this.flag === Reference.READ;
+        return __classPrivateFieldGet(this, _Reference_flag, "f") === ReferenceFlag.Read;
     }
-
     /**
      * Whether the reference is write-only.
-     * @function Reference#isWriteOnly
-     * @returns {boolean} write only
+     * @public
      */
     isWriteOnly() {
-        return this.flag === Reference.WRITE;
+        return __classPrivateFieldGet(this, _Reference_flag, "f") === ReferenceFlag.Write;
     }
-
     /**
      * Whether the reference is read-write.
-     * @function Reference#isReadWrite
-     * @returns {boolean} read write
+     * @public
      */
     isReadWrite() {
-        return this.flag === Reference.RW;
+        return __classPrivateFieldGet(this, _Reference_flag, "f") === ReferenceFlag.ReadWrite;
     }
 }
-
-/**
- * @constant Reference.READ
- * @private
- */
-Reference.READ = READ;
-
-/**
- * @constant Reference.WRITE
- * @private
- */
-Reference.WRITE = WRITE;
-
-/**
- * @constant Reference.RW
- * @private
- */
-Reference.RW = RW;
-
-export default Reference;
-
-/* vim: set sw=4 ts=4 et tw=80 : */
+exports.Reference = Reference;
+_Reference_flag = new WeakMap(), _Reference_referenceType = new WeakMap();
+//# sourceMappingURL=Reference.js.map

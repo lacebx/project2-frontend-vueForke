@@ -1,1 +1,206 @@
-module.exports={A:{A:{"2":"K D E eC","132":"F A B"},B:{"1":"4 5 6 7 8 9 C L M G N O P Q H R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I"},C:{"1":"0 1 2 3 4 5 6 7 8 9 B C L M G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB HC rB IC sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R JC S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I 9B KC LC gC","2":"fC GC J IB hC iC","132":"K D E F A"},D:{"1":"0 1 2 3 4 5 6 7 8 9 G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB HC rB IC sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I 9B KC LC","2":"J","16":"IB K D E L M","388":"F A B C"},E:{"1":"D E F A B C L M G lC mC nC NC AC BC oC pC qC OC PC CC rC DC QC RC SC TC UC sC EC VC WC XC YC ZC aC FC bC tC","2":"J jC MC","16":"IB K","388":"kC"},F:{"1":"0 1 2 3 C G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB rB sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R JC S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x yC BC","2":"F uC vC wC xC","132":"B AC cC"},G:{"1":"E 1C 2C 3C 4C 5C 6C 7C 8C 9C AD BD CD DD ED FD GD HD ID OC PC CC JD DC QC RC SC TC UC KD EC VC WC XC YC ZC aC FC bC","2":"zC","16":"MC dC","388":"0C"},H:{"1":"LD"},I:{"1":"I QD RD","2":"MD ND OD","388":"GC J PD dC"},J:{"1":"A","388":"D"},K:{"1":"C H BC","2":"A","132":"B AC cC"},L:{"1":"I"},M:{"1":"9B"},N:{"132":"A B"},O:{"1":"CC"},P:{"1":"0 1 2 3 J y z SD TD UD VD WD NC XD YD ZD aD bD DC EC FC cD"},Q:{"1":"dD"},R:{"1":"eD"},S:{"1":"fD gD"}},B:1,C:"CustomEvent",D:true};
+"use strict";
+
+const conversions = require("webidl-conversions");
+const utils = require("./utils.js");
+
+const CustomEventInit = require("./CustomEventInit.js");
+const implSymbol = utils.implSymbol;
+const ctorRegistrySymbol = utils.ctorRegistrySymbol;
+const Event = require("./Event.js");
+
+const interfaceName = "CustomEvent";
+
+exports.is = value => {
+  return utils.isObject(value) && utils.hasOwn(value, implSymbol) && value[implSymbol] instanceof Impl.implementation;
+};
+exports.isImpl = value => {
+  return utils.isObject(value) && value instanceof Impl.implementation;
+};
+exports.convert = (globalObject, value, { context = "The provided value" } = {}) => {
+  if (exports.is(value)) {
+    return utils.implForWrapper(value);
+  }
+  throw new globalObject.TypeError(`${context} is not of type 'CustomEvent'.`);
+};
+
+function makeWrapper(globalObject, newTarget) {
+  let proto;
+  if (newTarget !== undefined) {
+    proto = newTarget.prototype;
+  }
+
+  if (!utils.isObject(proto)) {
+    proto = globalObject[ctorRegistrySymbol]["CustomEvent"].prototype;
+  }
+
+  return Object.create(proto);
+}
+
+exports.create = (globalObject, constructorArgs, privateData) => {
+  const wrapper = makeWrapper(globalObject);
+  return exports.setup(wrapper, globalObject, constructorArgs, privateData);
+};
+
+exports.createImpl = (globalObject, constructorArgs, privateData) => {
+  const wrapper = exports.create(globalObject, constructorArgs, privateData);
+  return utils.implForWrapper(wrapper);
+};
+
+exports._internalSetup = (wrapper, globalObject) => {
+  Event._internalSetup(wrapper, globalObject);
+};
+
+exports.setup = (wrapper, globalObject, constructorArgs = [], privateData = {}) => {
+  privateData.wrapper = wrapper;
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: new Impl.implementation(globalObject, constructorArgs, privateData),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper;
+};
+
+exports.new = (globalObject, newTarget) => {
+  const wrapper = makeWrapper(globalObject, newTarget);
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: Object.create(Impl.implementation.prototype),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper[implSymbol];
+};
+
+const exposed = new Set(["Window", "Worker"]);
+
+exports.install = (globalObject, globalNames) => {
+  if (!globalNames.some(globalName => exposed.has(globalName))) {
+    return;
+  }
+
+  const ctorRegistry = utils.initCtorRegistry(globalObject);
+  class CustomEvent extends globalObject.Event {
+    constructor(type) {
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to construct 'CustomEvent': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = conversions["DOMString"](curArg, {
+          context: "Failed to construct 'CustomEvent': parameter 1",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = CustomEventInit.convert(globalObject, curArg, {
+          context: "Failed to construct 'CustomEvent': parameter 2"
+        });
+        args.push(curArg);
+      }
+      return exports.setup(Object.create(new.target.prototype), globalObject, args);
+    }
+
+    initCustomEvent(type) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'initCustomEvent' called on an object that is not a valid instance of CustomEvent."
+        );
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'initCustomEvent' on 'CustomEvent': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = conversions["DOMString"](curArg, {
+          context: "Failed to execute 'initCustomEvent' on 'CustomEvent': parameter 1",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        if (curArg !== undefined) {
+          curArg = conversions["boolean"](curArg, {
+            context: "Failed to execute 'initCustomEvent' on 'CustomEvent': parameter 2",
+            globals: globalObject
+          });
+        } else {
+          curArg = false;
+        }
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[2];
+        if (curArg !== undefined) {
+          curArg = conversions["boolean"](curArg, {
+            context: "Failed to execute 'initCustomEvent' on 'CustomEvent': parameter 3",
+            globals: globalObject
+          });
+        } else {
+          curArg = false;
+        }
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[3];
+        if (curArg !== undefined) {
+          curArg = conversions["any"](curArg, {
+            context: "Failed to execute 'initCustomEvent' on 'CustomEvent': parameter 4",
+            globals: globalObject
+          });
+        } else {
+          curArg = null;
+        }
+        args.push(curArg);
+      }
+      return esValue[implSymbol].initCustomEvent(...args);
+    }
+
+    get detail() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'get detail' called on an object that is not a valid instance of CustomEvent."
+        );
+      }
+
+      return esValue[implSymbol]["detail"];
+    }
+  }
+  Object.defineProperties(CustomEvent.prototype, {
+    initCustomEvent: { enumerable: true },
+    detail: { enumerable: true },
+    [Symbol.toStringTag]: { value: "CustomEvent", configurable: true }
+  });
+  ctorRegistry[interfaceName] = CustomEvent;
+
+  Object.defineProperty(globalObject, interfaceName, {
+    configurable: true,
+    writable: true,
+    value: CustomEvent
+  });
+};
+
+const Impl = require("../events/CustomEvent-impl.js");

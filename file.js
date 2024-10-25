@@ -1,214 +1,177 @@
 "use strict";
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-function helpers() {
-  const data = require("@babel/helpers");
-  helpers = function () {
-    return data;
-  };
-  return data;
-}
-function _traverse() {
-  const data = require("@babel/traverse");
-  _traverse = function () {
-    return data;
-  };
-  return data;
-}
-function _codeFrame() {
-  const data = require("@babel/code-frame");
-  _codeFrame = function () {
-    return data;
-  };
-  return data;
-}
-function _t() {
-  const data = require("@babel/types");
-  _t = function () {
-    return data;
-  };
-  return data;
-}
-function _semver() {
-  const data = require("semver");
-  _semver = function () {
-    return data;
-  };
-  return data;
-}
-var babel7 = _interopRequireWildcard(require("./babel-7-helpers.cjs"), true);
-function _getRequireWildcardCache(e) { if ("function" != typeof WeakMap) return null; var r = new WeakMap(), t = new WeakMap(); return (_getRequireWildcardCache = function (e) { return e ? t : r; })(e); }
-function _interopRequireWildcard(e, r) { if (!r && e && e.__esModule) return e; if (null === e || "object" != typeof e && "function" != typeof e) return { default: e }; var t = _getRequireWildcardCache(r); if (t && t.has(e)) return t.get(e); var n = { __proto__: null }, a = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var u in e) if ("default" !== u && {}.hasOwnProperty.call(e, u)) { var i = a ? Object.getOwnPropertyDescriptor(e, u) : null; i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u]; } return n.default = e, t && t.set(e, n), n; }
-const {
-  cloneNode,
-  interpreterDirective
-} = _t();
-const errorVisitor = {
-  enter(path, state) {
-    const loc = path.node.loc;
-    if (loc) {
-      state.loc = loc;
-      path.stop();
-    }
-  }
-};
-class File {
-  constructor(options, {
-    code,
-    ast,
-    inputMap
-  }) {
-    this._map = new Map();
-    this.opts = void 0;
-    this.declarations = {};
-    this.path = void 0;
-    this.ast = void 0;
-    this.scope = void 0;
-    this.metadata = {};
-    this.code = "";
-    this.inputMap = void 0;
-    this.hub = {
-      file: this,
-      getCode: () => this.code,
-      getScope: () => this.scope,
-      addHelper: this.addHelper.bind(this),
-      buildError: this.buildCodeFrameError.bind(this)
-    };
-    this.opts = options;
-    this.code = code;
-    this.ast = ast;
-    this.inputMap = inputMap;
-    this.path = _traverse().NodePath.get({
-      hub: this.hub,
-      parentPath: null,
-      parent: this.ast,
-      container: this.ast,
-      key: "program"
-    }).setContext();
-    this.scope = this.path.scope;
-  }
-  get shebang() {
-    const {
-      interpreter
-    } = this.path.node;
-    return interpreter ? interpreter.value : "";
-  }
-  set shebang(value) {
-    if (value) {
-      this.path.get("interpreter").replaceWith(interpreterDirective(value));
-    } else {
-      this.path.get("interpreter").remove();
-    }
-  }
-  set(key, val) {
-    {
-      if (key === "helpersNamespace") {
-        throw new Error("Babel 7.0.0-beta.56 has dropped support for the 'helpersNamespace' utility." + "If you are using @babel/plugin-external-helpers you will need to use a newer " + "version than the one you currently have installed. " + "If you have your own implementation, you'll want to explore using 'helperGenerator' " + "alongside 'file.availableHelper()'.");
-      }
-    }
-    this._map.set(key, val);
-  }
-  get(key) {
-    return this._map.get(key);
-  }
-  has(key) {
-    return this._map.has(key);
-  }
-  availableHelper(name, versionRange) {
-    let minVersion;
-    try {
-      minVersion = helpers().minVersion(name);
-    } catch (err) {
-      if (err.code !== "BABEL_HELPER_UNKNOWN") throw err;
-      return false;
-    }
-    if (typeof versionRange !== "string") return true;
-    if (_semver().valid(versionRange)) versionRange = `^${versionRange}`;
-    {
-      return !_semver().intersects(`<${minVersion}`, versionRange) && !_semver().intersects(`>=8.0.0`, versionRange);
-    }
-  }
-  addHelper(name) {
-    const declar = this.declarations[name];
-    if (declar) return cloneNode(declar);
-    const generator = this.get("helperGenerator");
-    if (generator) {
-      const res = generator(name);
-      if (res) return res;
-    }
-    helpers().minVersion(name);
-    const uid = this.declarations[name] = this.scope.generateUidIdentifier(name);
-    const dependencies = {};
-    for (const dep of helpers().getDependencies(name)) {
-      dependencies[dep] = this.addHelper(dep);
-    }
-    const {
-      nodes,
-      globals
-    } = helpers().get(name, dep => dependencies[dep], uid.name, Object.keys(this.scope.getAllBindings()));
-    globals.forEach(name => {
-      if (this.path.scope.hasBinding(name, true)) {
-        this.path.scope.rename(name);
-      }
-    });
-    nodes.forEach(node => {
-      node._compact = true;
-    });
-    const added = this.path.unshiftContainer("body", nodes);
-    for (const path of added) {
-      if (path.isVariableDeclaration()) this.scope.registerDeclaration(path);
-    }
-    return uid;
-  }
-  buildCodeFrameError(node, msg, _Error = SyntaxError) {
-    let loc = node == null ? void 0 : node.loc;
-    if (!loc && node) {
-      const state = {
-        loc: null
-      };
-      (0, _traverse().default)(node, errorVisitor, this.scope, state);
-      loc = state.loc;
-      let txt = "This is an error on an internal node. Probably an internal error.";
-      if (loc) txt += " Location has been estimated.";
-      msg += ` (${txt})`;
-    }
-    if (loc) {
-      const {
-        highlightCode = true
-      } = this.opts;
-      msg += "\n" + (0, _codeFrame().codeFrameColumns)(this.code, {
-        start: {
-          line: loc.start.line,
-          column: loc.start.column + 1
-        },
-        end: loc.end && loc.start.line === loc.end.line ? {
-          line: loc.end.line,
-          column: loc.end.column + 1
-        } : undefined
-      }, {
-        highlightCode
-      });
-    }
-    return new _Error(msg);
-  }
-}
-exports.default = File;
-{
-  File.prototype.addImport = function addImport() {
-    throw new Error("This API has been removed. If you're looking for this " + "functionality in Babel 7, you should import the " + "'@babel/helper-module-imports' module and use the functions exposed " + " from that module, such as 'addNamed' or 'addDefault'.");
-  };
-  File.prototype.addTemplateObject = function addTemplateObject() {
-    throw new Error("This function has been moved into the template literal transform itself.");
-  };
-  {
-    File.prototype.getModuleName = function getModuleName() {
-      return babel7.getModuleName()(this.opts, this.opts);
-    };
-  }
-}
-0 && 0;
+const conversions = require("webidl-conversions");
+const utils = require("./utils.js");
 
-//# sourceMappingURL=file.js.map
+const Blob = require("./Blob.js");
+const FilePropertyBag = require("./FilePropertyBag.js");
+const implSymbol = utils.implSymbol;
+const ctorRegistrySymbol = utils.ctorRegistrySymbol;
+
+const interfaceName = "File";
+
+exports.is = value => {
+  return utils.isObject(value) && utils.hasOwn(value, implSymbol) && value[implSymbol] instanceof Impl.implementation;
+};
+exports.isImpl = value => {
+  return utils.isObject(value) && value instanceof Impl.implementation;
+};
+exports.convert = (globalObject, value, { context = "The provided value" } = {}) => {
+  if (exports.is(value)) {
+    return utils.implForWrapper(value);
+  }
+  throw new globalObject.TypeError(`${context} is not of type 'File'.`);
+};
+
+function makeWrapper(globalObject, newTarget) {
+  let proto;
+  if (newTarget !== undefined) {
+    proto = newTarget.prototype;
+  }
+
+  if (!utils.isObject(proto)) {
+    proto = globalObject[ctorRegistrySymbol]["File"].prototype;
+  }
+
+  return Object.create(proto);
+}
+
+exports.create = (globalObject, constructorArgs, privateData) => {
+  const wrapper = makeWrapper(globalObject);
+  return exports.setup(wrapper, globalObject, constructorArgs, privateData);
+};
+
+exports.createImpl = (globalObject, constructorArgs, privateData) => {
+  const wrapper = exports.create(globalObject, constructorArgs, privateData);
+  return utils.implForWrapper(wrapper);
+};
+
+exports._internalSetup = (wrapper, globalObject) => {
+  Blob._internalSetup(wrapper, globalObject);
+};
+
+exports.setup = (wrapper, globalObject, constructorArgs = [], privateData = {}) => {
+  privateData.wrapper = wrapper;
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: new Impl.implementation(globalObject, constructorArgs, privateData),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper;
+};
+
+exports.new = (globalObject, newTarget) => {
+  const wrapper = makeWrapper(globalObject, newTarget);
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: Object.create(Impl.implementation.prototype),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper[implSymbol];
+};
+
+const exposed = new Set(["Window", "Worker"]);
+
+exports.install = (globalObject, globalNames) => {
+  if (!globalNames.some(globalName => exposed.has(globalName))) {
+    return;
+  }
+
+  const ctorRegistry = utils.initCtorRegistry(globalObject);
+  class File extends globalObject.Blob {
+    constructor(fileBits, fileName) {
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to construct 'File': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (!utils.isObject(curArg)) {
+          throw new globalObject.TypeError("Failed to construct 'File': parameter 1" + " is not an iterable object.");
+        } else {
+          const V = [];
+          const tmp = curArg;
+          for (let nextItem of tmp) {
+            if (Blob.is(nextItem)) {
+              nextItem = utils.implForWrapper(nextItem);
+            } else if (utils.isArrayBuffer(nextItem)) {
+            } else if (ArrayBuffer.isView(nextItem)) {
+            } else {
+              nextItem = conversions["USVString"](nextItem, {
+                context: "Failed to construct 'File': parameter 1" + "'s element",
+                globals: globalObject
+              });
+            }
+            V.push(nextItem);
+          }
+          curArg = V;
+        }
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = conversions["USVString"](curArg, {
+          context: "Failed to construct 'File': parameter 2",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[2];
+        curArg = FilePropertyBag.convert(globalObject, curArg, { context: "Failed to construct 'File': parameter 3" });
+        args.push(curArg);
+      }
+      return exports.setup(Object.create(new.target.prototype), globalObject, args);
+    }
+
+    get name() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'get name' called on an object that is not a valid instance of File.");
+      }
+
+      return esValue[implSymbol]["name"];
+    }
+
+    get lastModified() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'get lastModified' called on an object that is not a valid instance of File."
+        );
+      }
+
+      return esValue[implSymbol]["lastModified"];
+    }
+  }
+  Object.defineProperties(File.prototype, {
+    name: { enumerable: true },
+    lastModified: { enumerable: true },
+    [Symbol.toStringTag]: { value: "File", configurable: true }
+  });
+  ctorRegistry[interfaceName] = File;
+
+  Object.defineProperty(globalObject, interfaceName, {
+    configurable: true,
+    writable: true,
+    value: File
+  });
+};
+
+const Impl = require("../file-api/File-impl.js");

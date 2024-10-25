@@ -1,1 +1,178 @@
-module.exports={A:{A:{"1":"B","2":"K D E eC","8":"F A"},B:{"1":"4 5 6 7 8 9 C L M G N O P Q H R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I"},C:{"1":"0 1 2 3 4 5 6 7 8 9 M G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB HC rB IC sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R JC S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I 9B KC LC gC","2":"fC GC J IB K D E F A B C L hC iC"},D:{"1":"4 5 6 7 8 9 LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB HC rB IC sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x AB BB CB DB EB FB GB HB I 9B KC LC","2":"J IB K D E F A B C L M G N O","33":"0 1 2 3 P JB y z KB"},E:{"1":"D E F A B C L M G lC mC nC NC AC BC oC pC qC OC PC CC rC DC QC RC SC TC UC sC EC VC WC XC YC ZC aC FC bC tC","2":"J IB jC MC kC","33":"K"},F:{"1":"0 1 2 3 G N O P JB y z KB LB MB NB OB PB QB RB SB TB UB VB WB XB YB ZB aB bB cB dB eB fB gB hB iB jB kB lB mB nB oB pB qB rB sB tB uB vB wB xB yB zB 0B 1B 2B 3B 4B 5B 6B 7B 8B Q H R JC S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x","2":"F B C uC vC wC xC AC cC yC BC"},G:{"1":"E 2C 3C 4C 5C 6C 7C 8C 9C AD BD CD DD ED FD GD HD ID OC PC CC JD DC QC RC SC TC UC KD EC VC WC XC YC ZC aC FC bC","2":"MC zC dC 0C","33":"1C"},H:{"2":"LD"},I:{"1":"I QD RD","2":"GC MD ND OD","8":"J PD dC"},J:{"1":"A","2":"D"},K:{"1":"H","2":"A B C AC cC BC"},L:{"1":"I"},M:{"1":"9B"},N:{"1":"B","8":"A"},O:{"1":"CC"},P:{"1":"0 1 2 3 J y z SD TD UD VD WD NC XD YD ZD aD bD DC EC FC cD"},Q:{"1":"dD"},R:{"1":"eD"},S:{"1":"fD gD"}},B:1,C:"Mutation Observer",D:true};
+"use strict";
+
+const conversions = require("webidl-conversions");
+const utils = require("./utils.js");
+
+const MutationCallback = require("./MutationCallback.js");
+const Node = require("./Node.js");
+const MutationObserverInit = require("./MutationObserverInit.js");
+const implSymbol = utils.implSymbol;
+const ctorRegistrySymbol = utils.ctorRegistrySymbol;
+
+const interfaceName = "MutationObserver";
+
+exports.is = value => {
+  return utils.isObject(value) && utils.hasOwn(value, implSymbol) && value[implSymbol] instanceof Impl.implementation;
+};
+exports.isImpl = value => {
+  return utils.isObject(value) && value instanceof Impl.implementation;
+};
+exports.convert = (globalObject, value, { context = "The provided value" } = {}) => {
+  if (exports.is(value)) {
+    return utils.implForWrapper(value);
+  }
+  throw new globalObject.TypeError(`${context} is not of type 'MutationObserver'.`);
+};
+
+function makeWrapper(globalObject, newTarget) {
+  let proto;
+  if (newTarget !== undefined) {
+    proto = newTarget.prototype;
+  }
+
+  if (!utils.isObject(proto)) {
+    proto = globalObject[ctorRegistrySymbol]["MutationObserver"].prototype;
+  }
+
+  return Object.create(proto);
+}
+
+exports.create = (globalObject, constructorArgs, privateData) => {
+  const wrapper = makeWrapper(globalObject);
+  return exports.setup(wrapper, globalObject, constructorArgs, privateData);
+};
+
+exports.createImpl = (globalObject, constructorArgs, privateData) => {
+  const wrapper = exports.create(globalObject, constructorArgs, privateData);
+  return utils.implForWrapper(wrapper);
+};
+
+exports._internalSetup = (wrapper, globalObject) => {};
+
+exports.setup = (wrapper, globalObject, constructorArgs = [], privateData = {}) => {
+  privateData.wrapper = wrapper;
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: new Impl.implementation(globalObject, constructorArgs, privateData),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper;
+};
+
+exports.new = (globalObject, newTarget) => {
+  const wrapper = makeWrapper(globalObject, newTarget);
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: Object.create(Impl.implementation.prototype),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper[implSymbol];
+};
+
+const exposed = new Set(["Window"]);
+
+exports.install = (globalObject, globalNames) => {
+  if (!globalNames.some(globalName => exposed.has(globalName))) {
+    return;
+  }
+
+  const ctorRegistry = utils.initCtorRegistry(globalObject);
+  class MutationObserver {
+    constructor(callback) {
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to construct 'MutationObserver': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = MutationCallback.convert(globalObject, curArg, {
+          context: "Failed to construct 'MutationObserver': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return exports.setup(Object.create(new.target.prototype), globalObject, args);
+    }
+
+    observe(target) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'observe' called on an object that is not a valid instance of MutationObserver."
+        );
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'observe' on 'MutationObserver': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'observe' on 'MutationObserver': parameter 1"
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = MutationObserverInit.convert(globalObject, curArg, {
+          context: "Failed to execute 'observe' on 'MutationObserver': parameter 2"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].observe(...args);
+    }
+
+    disconnect() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'disconnect' called on an object that is not a valid instance of MutationObserver."
+        );
+      }
+
+      return esValue[implSymbol].disconnect();
+    }
+
+    takeRecords() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'takeRecords' called on an object that is not a valid instance of MutationObserver."
+        );
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol].takeRecords());
+    }
+  }
+  Object.defineProperties(MutationObserver.prototype, {
+    observe: { enumerable: true },
+    disconnect: { enumerable: true },
+    takeRecords: { enumerable: true },
+    [Symbol.toStringTag]: { value: "MutationObserver", configurable: true }
+  });
+  ctorRegistry[interfaceName] = MutationObserver;
+
+  Object.defineProperty(globalObject, interfaceName, {
+    configurable: true,
+    writable: true,
+    value: MutationObserver
+  });
+};
+
+const Impl = require("../mutation-observer/MutationObserver-impl.js");

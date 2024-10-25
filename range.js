@@ -1,554 +1,641 @@
-const SPACE_CHARACTERS = /\s+/g
+"use strict";
 
-// hoisted class for cyclic dependency
-class Range {
-  constructor (range, options) {
-    options = parseOptions(options)
+const conversions = require("webidl-conversions");
+const utils = require("./utils.js");
 
-    if (range instanceof Range) {
-      if (
-        range.loose === !!options.loose &&
-        range.includePrerelease === !!options.includePrerelease
-      ) {
-        return range
-      } else {
-        return new Range(range.raw, options)
+const Node = require("./Node.js");
+const ceReactionsPreSteps_helpers_custom_elements = require("../helpers/custom-elements.js").ceReactionsPreSteps;
+const ceReactionsPostSteps_helpers_custom_elements = require("../helpers/custom-elements.js").ceReactionsPostSteps;
+const implSymbol = utils.implSymbol;
+const ctorRegistrySymbol = utils.ctorRegistrySymbol;
+const AbstractRange = require("./AbstractRange.js");
+
+const interfaceName = "Range";
+
+exports.is = value => {
+  return utils.isObject(value) && utils.hasOwn(value, implSymbol) && value[implSymbol] instanceof Impl.implementation;
+};
+exports.isImpl = value => {
+  return utils.isObject(value) && value instanceof Impl.implementation;
+};
+exports.convert = (globalObject, value, { context = "The provided value" } = {}) => {
+  if (exports.is(value)) {
+    return utils.implForWrapper(value);
+  }
+  throw new globalObject.TypeError(`${context} is not of type 'Range'.`);
+};
+
+function makeWrapper(globalObject, newTarget) {
+  let proto;
+  if (newTarget !== undefined) {
+    proto = newTarget.prototype;
+  }
+
+  if (!utils.isObject(proto)) {
+    proto = globalObject[ctorRegistrySymbol]["Range"].prototype;
+  }
+
+  return Object.create(proto);
+}
+
+exports.create = (globalObject, constructorArgs, privateData) => {
+  const wrapper = makeWrapper(globalObject);
+  return exports.setup(wrapper, globalObject, constructorArgs, privateData);
+};
+
+exports.createImpl = (globalObject, constructorArgs, privateData) => {
+  const wrapper = exports.create(globalObject, constructorArgs, privateData);
+  return utils.implForWrapper(wrapper);
+};
+
+exports._internalSetup = (wrapper, globalObject) => {
+  AbstractRange._internalSetup(wrapper, globalObject);
+};
+
+exports.setup = (wrapper, globalObject, constructorArgs = [], privateData = {}) => {
+  privateData.wrapper = wrapper;
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: new Impl.implementation(globalObject, constructorArgs, privateData),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper;
+};
+
+exports.new = (globalObject, newTarget) => {
+  const wrapper = makeWrapper(globalObject, newTarget);
+
+  exports._internalSetup(wrapper, globalObject);
+  Object.defineProperty(wrapper, implSymbol, {
+    value: Object.create(Impl.implementation.prototype),
+    configurable: true
+  });
+
+  wrapper[implSymbol][utils.wrapperSymbol] = wrapper;
+  if (Impl.init) {
+    Impl.init(wrapper[implSymbol]);
+  }
+  return wrapper[implSymbol];
+};
+
+const exposed = new Set(["Window"]);
+
+exports.install = (globalObject, globalNames) => {
+  if (!globalNames.some(globalName => exposed.has(globalName))) {
+    return;
+  }
+
+  const ctorRegistry = utils.initCtorRegistry(globalObject);
+  class Range extends globalObject.AbstractRange {
+    constructor() {
+      return exports.setup(Object.create(new.target.prototype), globalObject, undefined);
+    }
+
+    setStart(node, offset) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'setStart' called on an object that is not a valid instance of Range.");
       }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'setStart' on 'Range': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'setStart' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = conversions["unsigned long"](curArg, {
+          context: "Failed to execute 'setStart' on 'Range': parameter 2",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].setStart(...args);
     }
 
-    if (range instanceof Comparator) {
-      // just put it in the set and return
-      this.raw = range.value
-      this.set = [[range]]
-      this.formatted = undefined
-      return this
+    setEnd(node, offset) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'setEnd' called on an object that is not a valid instance of Range.");
+      }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'setEnd' on 'Range': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, { context: "Failed to execute 'setEnd' on 'Range': parameter 1" });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = conversions["unsigned long"](curArg, {
+          context: "Failed to execute 'setEnd' on 'Range': parameter 2",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].setEnd(...args);
     }
 
-    this.options = options
-    this.loose = !!options.loose
-    this.includePrerelease = !!options.includePrerelease
+    setStartBefore(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'setStartBefore' called on an object that is not a valid instance of Range.");
+      }
 
-    // First reduce all whitespace as much as possible so we do not have to rely
-    // on potentially slow regexes like \s*. This is then stored and used for
-    // future error messages as well.
-    this.raw = range.trim().replace(SPACE_CHARACTERS, ' ')
-
-    // First, split on ||
-    this.set = this.raw
-      .split('||')
-      // map the range to a 2d array of comparators
-      .map(r => this.parseRange(r.trim()))
-      // throw out any comparator lists that are empty
-      // this generally means that it was not a valid range, which is allowed
-      // in loose mode, but will still throw if the WHOLE range is invalid.
-      .filter(c => c.length)
-
-    if (!this.set.length) {
-      throw new TypeError(`Invalid SemVer Range: ${this.raw}`)
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'setStartBefore' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'setStartBefore' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].setStartBefore(...args);
     }
 
-    // if we have any that are not the null set, throw out null sets.
-    if (this.set.length > 1) {
-      // keep the first one, in case they're all null sets
-      const first = this.set[0]
-      this.set = this.set.filter(c => !isNullSet(c[0]))
-      if (this.set.length === 0) {
-        this.set = [first]
-      } else if (this.set.length > 1) {
-        // if we have any that are *, then the range is just *
-        for (const c of this.set) {
-          if (c.length === 1 && isAny(c[0])) {
-            this.set = [c]
-            break
-          }
+    setStartAfter(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'setStartAfter' called on an object that is not a valid instance of Range.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'setStartAfter' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'setStartAfter' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].setStartAfter(...args);
+    }
+
+    setEndBefore(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'setEndBefore' called on an object that is not a valid instance of Range.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'setEndBefore' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'setEndBefore' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].setEndBefore(...args);
+    }
+
+    setEndAfter(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'setEndAfter' called on an object that is not a valid instance of Range.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'setEndAfter' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'setEndAfter' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].setEndAfter(...args);
+    }
+
+    collapse() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'collapse' called on an object that is not a valid instance of Range.");
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        if (curArg !== undefined) {
+          curArg = conversions["boolean"](curArg, {
+            context: "Failed to execute 'collapse' on 'Range': parameter 1",
+            globals: globalObject
+          });
+        } else {
+          curArg = false;
         }
+        args.push(curArg);
       }
+      return esValue[implSymbol].collapse(...args);
     }
 
-    this.formatted = undefined
-  }
-
-  get range () {
-    if (this.formatted === undefined) {
-      this.formatted = ''
-      for (let i = 0; i < this.set.length; i++) {
-        if (i > 0) {
-          this.formatted += '||'
-        }
-        const comps = this.set[i]
-        for (let k = 0; k < comps.length; k++) {
-          if (k > 0) {
-            this.formatted += ' '
-          }
-          this.formatted += comps[k].toString().trim()
-        }
+    selectNode(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'selectNode' called on an object that is not a valid instance of Range.");
       }
-    }
-    return this.formatted
-  }
 
-  format () {
-    return this.range
-  }
-
-  toString () {
-    return this.range
-  }
-
-  parseRange (range) {
-    // memoize range parsing for performance.
-    // this is a very hot path, and fully deterministic.
-    const memoOpts =
-      (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) |
-      (this.options.loose && FLAG_LOOSE)
-    const memoKey = memoOpts + ':' + range
-    const cached = cache.get(memoKey)
-    if (cached) {
-      return cached
-    }
-
-    const loose = this.options.loose
-    // `1.2.3 - 1.2.4` => `>=1.2.3 <=1.2.4`
-    const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE]
-    range = range.replace(hr, hyphenReplace(this.options.includePrerelease))
-    debug('hyphen replace', range)
-
-    // `> 1.2.3 < 1.2.5` => `>1.2.3 <1.2.5`
-    range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace)
-    debug('comparator trim', range)
-
-    // `~ 1.2.3` => `~1.2.3`
-    range = range.replace(re[t.TILDETRIM], tildeTrimReplace)
-    debug('tilde trim', range)
-
-    // `^ 1.2.3` => `^1.2.3`
-    range = range.replace(re[t.CARETTRIM], caretTrimReplace)
-    debug('caret trim', range)
-
-    // At this point, the range is completely trimmed and
-    // ready to be split into comparators.
-
-    let rangeList = range
-      .split(' ')
-      .map(comp => parseComparator(comp, this.options))
-      .join(' ')
-      .split(/\s+/)
-      // >=0.0.0 is equivalent to *
-      .map(comp => replaceGTE0(comp, this.options))
-
-    if (loose) {
-      // in loose mode, throw out any that are not valid comparators
-      rangeList = rangeList.filter(comp => {
-        debug('loose invalid filter', comp, this.options)
-        return !!comp.match(re[t.COMPARATORLOOSE])
-      })
-    }
-    debug('range list', rangeList)
-
-    // if any comparators are the null set, then replace with JUST null set
-    // if more than one comparator, remove any * comparators
-    // also, don't include the same comparator more than once
-    const rangeMap = new Map()
-    const comparators = rangeList.map(comp => new Comparator(comp, this.options))
-    for (const comp of comparators) {
-      if (isNullSet(comp)) {
-        return [comp]
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'selectNode' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
       }
-      rangeMap.set(comp.value, comp)
-    }
-    if (rangeMap.size > 1 && rangeMap.has('')) {
-      rangeMap.delete('')
-    }
-
-    const result = [...rangeMap.values()]
-    cache.set(memoKey, result)
-    return result
-  }
-
-  intersects (range, options) {
-    if (!(range instanceof Range)) {
-      throw new TypeError('a Range is required')
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'selectNode' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].selectNode(...args);
     }
 
-    return this.set.some((thisComparators) => {
-      return (
-        isSatisfiable(thisComparators, options) &&
-        range.set.some((rangeComparators) => {
-          return (
-            isSatisfiable(rangeComparators, options) &&
-            thisComparators.every((thisComparator) => {
-              return rangeComparators.every((rangeComparator) => {
-                return thisComparator.intersects(rangeComparator, options)
-              })
-            })
-          )
-        })
-      )
-    })
-  }
+    selectNodeContents(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'selectNodeContents' called on an object that is not a valid instance of Range."
+        );
+      }
 
-  // if ANY of the sets match ALL of its comparators, then pass
-  test (version) {
-    if (!version) {
-      return false
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'selectNodeContents' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'selectNodeContents' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].selectNodeContents(...args);
     }
 
-    if (typeof version === 'string') {
+    compareBoundaryPoints(how, sourceRange) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'compareBoundaryPoints' called on an object that is not a valid instance of Range."
+        );
+      }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'compareBoundaryPoints' on 'Range': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = conversions["unsigned short"](curArg, {
+          context: "Failed to execute 'compareBoundaryPoints' on 'Range': parameter 1",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = exports.convert(globalObject, curArg, {
+          context: "Failed to execute 'compareBoundaryPoints' on 'Range': parameter 2"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].compareBoundaryPoints(...args);
+    }
+
+    deleteContents() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'deleteContents' called on an object that is not a valid instance of Range.");
+      }
+
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
       try {
-        version = new SemVer(version, this.options)
-      } catch (er) {
-        return false
+        return esValue[implSymbol].deleteContents();
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
       }
     }
 
-    for (let i = 0; i < this.set.length; i++) {
-      if (testSet(this.set[i], version, this.options)) {
-        return true
+    extractContents() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'extractContents' called on an object that is not a valid instance of Range."
+        );
       }
-    }
-    return false
-  }
-}
 
-module.exports = Range
-
-const LRU = require('../internal/lrucache')
-const cache = new LRU()
-
-const parseOptions = require('../internal/parse-options')
-const Comparator = require('./comparator')
-const debug = require('../internal/debug')
-const SemVer = require('./semver')
-const {
-  safeRe: re,
-  t,
-  comparatorTrimReplace,
-  tildeTrimReplace,
-  caretTrimReplace,
-} = require('../internal/re')
-const { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = require('../internal/constants')
-
-const isNullSet = c => c.value === '<0.0.0-0'
-const isAny = c => c.value === ''
-
-// take a set of comparators and determine whether there
-// exists a version which can satisfy it
-const isSatisfiable = (comparators, options) => {
-  let result = true
-  const remainingComparators = comparators.slice()
-  let testComparator = remainingComparators.pop()
-
-  while (result && remainingComparators.length) {
-    result = remainingComparators.every((otherComparator) => {
-      return testComparator.intersects(otherComparator, options)
-    })
-
-    testComparator = remainingComparators.pop()
-  }
-
-  return result
-}
-
-// comprised of xranges, tildes, stars, and gtlt's at this point.
-// already replaced the hyphen ranges
-// turn into a set of JUST comparators.
-const parseComparator = (comp, options) => {
-  debug('comp', comp, options)
-  comp = replaceCarets(comp, options)
-  debug('caret', comp)
-  comp = replaceTildes(comp, options)
-  debug('tildes', comp)
-  comp = replaceXRanges(comp, options)
-  debug('xrange', comp)
-  comp = replaceStars(comp, options)
-  debug('stars', comp)
-  return comp
-}
-
-const isX = id => !id || id.toLowerCase() === 'x' || id === '*'
-
-// ~, ~> --> * (any, kinda silly)
-// ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0 <3.0.0-0
-// ~2.0, ~2.0.x, ~>2.0, ~>2.0.x --> >=2.0.0 <2.1.0-0
-// ~1.2, ~1.2.x, ~>1.2, ~>1.2.x --> >=1.2.0 <1.3.0-0
-// ~1.2.3, ~>1.2.3 --> >=1.2.3 <1.3.0-0
-// ~1.2.0, ~>1.2.0 --> >=1.2.0 <1.3.0-0
-// ~0.0.1 --> >=0.0.1 <0.1.0-0
-const replaceTildes = (comp, options) => {
-  return comp
-    .trim()
-    .split(/\s+/)
-    .map((c) => replaceTilde(c, options))
-    .join(' ')
-}
-
-const replaceTilde = (comp, options) => {
-  const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE]
-  return comp.replace(r, (_, M, m, p, pr) => {
-    debug('tilde', comp, _, M, m, p, pr)
-    let ret
-
-    if (isX(M)) {
-      ret = ''
-    } else if (isX(m)) {
-      ret = `>=${M}.0.0 <${+M + 1}.0.0-0`
-    } else if (isX(p)) {
-      // ~1.2 == >=1.2.0 <1.3.0-0
-      ret = `>=${M}.${m}.0 <${M}.${+m + 1}.0-0`
-    } else if (pr) {
-      debug('replaceTilde pr', pr)
-      ret = `>=${M}.${m}.${p}-${pr
-      } <${M}.${+m + 1}.0-0`
-    } else {
-      // ~1.2.3 == >=1.2.3 <1.3.0-0
-      ret = `>=${M}.${m}.${p
-      } <${M}.${+m + 1}.0-0`
-    }
-
-    debug('tilde return', ret)
-    return ret
-  })
-}
-
-// ^ --> * (any, kinda silly)
-// ^2, ^2.x, ^2.x.x --> >=2.0.0 <3.0.0-0
-// ^2.0, ^2.0.x --> >=2.0.0 <3.0.0-0
-// ^1.2, ^1.2.x --> >=1.2.0 <2.0.0-0
-// ^1.2.3 --> >=1.2.3 <2.0.0-0
-// ^1.2.0 --> >=1.2.0 <2.0.0-0
-// ^0.0.1 --> >=0.0.1 <0.0.2-0
-// ^0.1.0 --> >=0.1.0 <0.2.0-0
-const replaceCarets = (comp, options) => {
-  return comp
-    .trim()
-    .split(/\s+/)
-    .map((c) => replaceCaret(c, options))
-    .join(' ')
-}
-
-const replaceCaret = (comp, options) => {
-  debug('caret', comp, options)
-  const r = options.loose ? re[t.CARETLOOSE] : re[t.CARET]
-  const z = options.includePrerelease ? '-0' : ''
-  return comp.replace(r, (_, M, m, p, pr) => {
-    debug('caret', comp, _, M, m, p, pr)
-    let ret
-
-    if (isX(M)) {
-      ret = ''
-    } else if (isX(m)) {
-      ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`
-    } else if (isX(p)) {
-      if (M === '0') {
-        ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`
-      } else {
-        ret = `>=${M}.${m}.0${z} <${+M + 1}.0.0-0`
-      }
-    } else if (pr) {
-      debug('replaceCaret pr', pr)
-      if (M === '0') {
-        if (m === '0') {
-          ret = `>=${M}.${m}.${p}-${pr
-          } <${M}.${m}.${+p + 1}-0`
-        } else {
-          ret = `>=${M}.${m}.${p}-${pr
-          } <${M}.${+m + 1}.0-0`
-        }
-      } else {
-        ret = `>=${M}.${m}.${p}-${pr
-        } <${+M + 1}.0.0-0`
-      }
-    } else {
-      debug('no pr')
-      if (M === '0') {
-        if (m === '0') {
-          ret = `>=${M}.${m}.${p
-          }${z} <${M}.${m}.${+p + 1}-0`
-        } else {
-          ret = `>=${M}.${m}.${p
-          }${z} <${M}.${+m + 1}.0-0`
-        }
-      } else {
-        ret = `>=${M}.${m}.${p
-        } <${+M + 1}.0.0-0`
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].extractContents());
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
       }
     }
 
-    debug('caret return', ret)
-    return ret
-  })
-}
+    cloneContents() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'cloneContents' called on an object that is not a valid instance of Range.");
+      }
 
-const replaceXRanges = (comp, options) => {
-  debug('replaceXRanges', comp, options)
-  return comp
-    .split(/\s+/)
-    .map((c) => replaceXRange(c, options))
-    .join(' ')
-}
-
-const replaceXRange = (comp, options) => {
-  comp = comp.trim()
-  const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE]
-  return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
-    debug('xRange', comp, ret, gtlt, M, m, p, pr)
-    const xM = isX(M)
-    const xm = xM || isX(m)
-    const xp = xm || isX(p)
-    const anyX = xp
-
-    if (gtlt === '=' && anyX) {
-      gtlt = ''
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].cloneContents());
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
     }
 
-    // if we're including prereleases in the match, then we need
-    // to fix this to -0, the lowest possible prerelease value
-    pr = options.includePrerelease ? '-0' : ''
-
-    if (xM) {
-      if (gtlt === '>' || gtlt === '<') {
-        // nothing is allowed
-        ret = '<0.0.0-0'
-      } else {
-        // nothing is forbidden
-        ret = '*'
-      }
-    } else if (gtlt && anyX) {
-      // we know patch is an x, because we have any x at all.
-      // replace X with 0
-      if (xm) {
-        m = 0
-      }
-      p = 0
-
-      if (gtlt === '>') {
-        // >1 => >=2.0.0
-        // >1.2 => >=1.3.0
-        gtlt = '>='
-        if (xm) {
-          M = +M + 1
-          m = 0
-          p = 0
-        } else {
-          m = +m + 1
-          p = 0
-        }
-      } else if (gtlt === '<=') {
-        // <=0.7.x is actually <0.8.0, since any 0.7.x should
-        // pass.  Similarly, <=7.x is actually <8.0.0, etc.
-        gtlt = '<'
-        if (xm) {
-          M = +M + 1
-        } else {
-          m = +m + 1
-        }
+    insertNode(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'insertNode' called on an object that is not a valid instance of Range.");
       }
 
-      if (gtlt === '<') {
-        pr = '-0'
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'insertNode' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
       }
-
-      ret = `${gtlt + M}.${m}.${p}${pr}`
-    } else if (xm) {
-      ret = `>=${M}.0.0${pr} <${+M + 1}.0.0-0`
-    } else if (xp) {
-      ret = `>=${M}.${m}.0${pr
-      } <${M}.${+m + 1}.0-0`
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'insertNode' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return esValue[implSymbol].insertNode(...args);
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
     }
 
-    debug('xRange return', ret)
+    surroundContents(newParent) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'surroundContents' called on an object that is not a valid instance of Range."
+        );
+      }
 
-    return ret
-  })
-}
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'surroundContents' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'surroundContents' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return esValue[implSymbol].surroundContents(...args);
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
 
-// Because * is AND-ed with everything else in the comparator,
-// and '' means "any version", just remove the *s entirely.
-const replaceStars = (comp, options) => {
-  debug('replaceStars', comp, options)
-  // Looseness is ignored here.  star is always as loose as it gets!
-  return comp
-    .trim()
-    .replace(re[t.STAR], '')
-}
+    cloneRange() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'cloneRange' called on an object that is not a valid instance of Range.");
+      }
 
-const replaceGTE0 = (comp, options) => {
-  debug('replaceGTE0', comp, options)
-  return comp
-    .trim()
-    .replace(re[options.includePrerelease ? t.GTE0PRE : t.GTE0], '')
-}
+      return utils.tryWrapperForImpl(esValue[implSymbol].cloneRange());
+    }
 
-// This function is passed to string.replace(re[t.HYPHENRANGE])
-// M, m, patch, prerelease, build
-// 1.2 - 3.4.5 => >=1.2.0 <=3.4.5
-// 1.2.3 - 3.4 => >=1.2.0 <3.5.0-0 Any 3.4.x will do
-// 1.2 - 3.4 => >=1.2.0 <3.5.0-0
-// TODO build?
-const hyphenReplace = incPr => ($0,
-  from, fM, fm, fp, fpr, fb,
-  to, tM, tm, tp, tpr) => {
-  if (isX(fM)) {
-    from = ''
-  } else if (isX(fm)) {
-    from = `>=${fM}.0.0${incPr ? '-0' : ''}`
-  } else if (isX(fp)) {
-    from = `>=${fM}.${fm}.0${incPr ? '-0' : ''}`
-  } else if (fpr) {
-    from = `>=${from}`
-  } else {
-    from = `>=${from}${incPr ? '-0' : ''}`
-  }
+    detach() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'detach' called on an object that is not a valid instance of Range.");
+      }
 
-  if (isX(tM)) {
-    to = ''
-  } else if (isX(tm)) {
-    to = `<${+tM + 1}.0.0-0`
-  } else if (isX(tp)) {
-    to = `<${tM}.${+tm + 1}.0-0`
-  } else if (tpr) {
-    to = `<=${tM}.${tm}.${tp}-${tpr}`
-  } else if (incPr) {
-    to = `<${tM}.${tm}.${+tp + 1}-0`
-  } else {
-    to = `<=${to}`
-  }
+      return esValue[implSymbol].detach();
+    }
 
-  return `${from} ${to}`.trim()
-}
+    isPointInRange(node, offset) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'isPointInRange' called on an object that is not a valid instance of Range.");
+      }
 
-const testSet = (set, version, options) => {
-  for (let i = 0; i < set.length; i++) {
-    if (!set[i].test(version)) {
-      return false
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'isPointInRange' on 'Range': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'isPointInRange' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = conversions["unsigned long"](curArg, {
+          context: "Failed to execute 'isPointInRange' on 'Range': parameter 2",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].isPointInRange(...args);
+    }
+
+    comparePoint(node, offset) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'comparePoint' called on an object that is not a valid instance of Range.");
+      }
+
+      if (arguments.length < 2) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'comparePoint' on 'Range': 2 arguments required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'comparePoint' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      {
+        let curArg = arguments[1];
+        curArg = conversions["unsigned long"](curArg, {
+          context: "Failed to execute 'comparePoint' on 'Range': parameter 2",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].comparePoint(...args);
+    }
+
+    intersectsNode(node) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'intersectsNode' called on an object that is not a valid instance of Range.");
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'intersectsNode' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = Node.convert(globalObject, curArg, {
+          context: "Failed to execute 'intersectsNode' on 'Range': parameter 1"
+        });
+        args.push(curArg);
+      }
+      return esValue[implSymbol].intersectsNode(...args);
+    }
+
+    toString() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError("'toString' called on an object that is not a valid instance of Range.");
+      }
+
+      return esValue[implSymbol].toString();
+    }
+
+    createContextualFragment(fragment) {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'createContextualFragment' called on an object that is not a valid instance of Range."
+        );
+      }
+
+      if (arguments.length < 1) {
+        throw new globalObject.TypeError(
+          `Failed to execute 'createContextualFragment' on 'Range': 1 argument required, but only ${arguments.length} present.`
+        );
+      }
+      const args = [];
+      {
+        let curArg = arguments[0];
+        curArg = conversions["DOMString"](curArg, {
+          context: "Failed to execute 'createContextualFragment' on 'Range': parameter 1",
+          globals: globalObject
+        });
+        args.push(curArg);
+      }
+      ceReactionsPreSteps_helpers_custom_elements(globalObject);
+      try {
+        return utils.tryWrapperForImpl(esValue[implSymbol].createContextualFragment(...args));
+      } finally {
+        ceReactionsPostSteps_helpers_custom_elements(globalObject);
+      }
+    }
+
+    get commonAncestorContainer() {
+      const esValue = this !== null && this !== undefined ? this : globalObject;
+
+      if (!exports.is(esValue)) {
+        throw new globalObject.TypeError(
+          "'get commonAncestorContainer' called on an object that is not a valid instance of Range."
+        );
+      }
+
+      return utils.tryWrapperForImpl(esValue[implSymbol]["commonAncestorContainer"]);
     }
   }
+  Object.defineProperties(Range.prototype, {
+    setStart: { enumerable: true },
+    setEnd: { enumerable: true },
+    setStartBefore: { enumerable: true },
+    setStartAfter: { enumerable: true },
+    setEndBefore: { enumerable: true },
+    setEndAfter: { enumerable: true },
+    collapse: { enumerable: true },
+    selectNode: { enumerable: true },
+    selectNodeContents: { enumerable: true },
+    compareBoundaryPoints: { enumerable: true },
+    deleteContents: { enumerable: true },
+    extractContents: { enumerable: true },
+    cloneContents: { enumerable: true },
+    insertNode: { enumerable: true },
+    surroundContents: { enumerable: true },
+    cloneRange: { enumerable: true },
+    detach: { enumerable: true },
+    isPointInRange: { enumerable: true },
+    comparePoint: { enumerable: true },
+    intersectsNode: { enumerable: true },
+    toString: { enumerable: true },
+    createContextualFragment: { enumerable: true },
+    commonAncestorContainer: { enumerable: true },
+    [Symbol.toStringTag]: { value: "Range", configurable: true },
+    START_TO_START: { value: 0, enumerable: true },
+    START_TO_END: { value: 1, enumerable: true },
+    END_TO_END: { value: 2, enumerable: true },
+    END_TO_START: { value: 3, enumerable: true }
+  });
+  Object.defineProperties(Range, {
+    START_TO_START: { value: 0, enumerable: true },
+    START_TO_END: { value: 1, enumerable: true },
+    END_TO_END: { value: 2, enumerable: true },
+    END_TO_START: { value: 3, enumerable: true }
+  });
+  ctorRegistry[interfaceName] = Range;
 
-  if (version.prerelease.length && !options.includePrerelease) {
-    // Find the set of versions that are allowed to have prereleases
-    // For example, ^1.2.3-pr.1 desugars to >=1.2.3-pr.1 <2.0.0
-    // That should allow `1.2.3-pr.2` to pass.
-    // However, `1.2.4-alpha.notready` should NOT be allowed,
-    // even though it's within the range set by the comparators.
-    for (let i = 0; i < set.length; i++) {
-      debug(set[i].semver)
-      if (set[i].semver === Comparator.ANY) {
-        continue
-      }
+  Object.defineProperty(globalObject, interfaceName, {
+    configurable: true,
+    writable: true,
+    value: Range
+  });
+};
 
-      if (set[i].semver.prerelease.length > 0) {
-        const allowed = set[i].semver
-        if (allowed.major === version.major &&
-            allowed.minor === version.minor &&
-            allowed.patch === version.patch) {
-          return true
-        }
-      }
-    }
-
-    // Version has a -pre, but it's not one of the ones we like.
-    return false
-  }
-
-  return true
-}
+const Impl = require("../range/Range-impl.js");

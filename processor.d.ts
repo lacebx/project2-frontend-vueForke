@@ -1,59 +1,64 @@
-import { MMRegExp } from 'minimatch';
-import { Path } from 'path-scurry';
-import { Pattern } from './pattern.js';
-import { GlobWalkerOpts } from './walker.js';
-/**
- * A cache of which patterns have been processed for a given Path
- */
-export declare class HasWalkedCache {
-    store: Map<string, Set<string>>;
-    constructor(store?: Map<string, Set<string>>);
-    copy(): HasWalkedCache;
-    hasWalked(target: Path, pattern: Pattern): boolean | undefined;
-    storeWalked(target: Path, pattern: Pattern): void;
+import type { Linter } from './Linter';
+export declare namespace Processor {
+    interface ProcessorMeta {
+        /**
+         * The unique name of the processor.
+         */
+        name: string;
+        /**
+         * The a string identifying the version of the processor.
+         */
+        version?: string;
+    }
+    type PreProcess = (text: string, filename: string) => (string | {
+        text: string;
+        filename: string;
+    })[];
+    type PostProcess = (messagesList: Linter.LintMessage[][], filename: string) => Linter.LintMessage[];
+    interface ProcessorModule {
+        /**
+         * Information about the processor to uniquely identify it when serializing.
+         */
+        meta?: ProcessorMeta;
+        /**
+         * The function to extract code blocks.
+         */
+        preprocess?: PreProcess;
+        /**
+         * The function to merge messages.
+         */
+        postprocess?: PostProcess;
+        /**
+         * If `true` then it means the processor supports autofix.
+         */
+        supportsAutofix?: boolean;
+    }
+    /**
+     * A loose definition of the ParserModule type for use with configs
+     * This type intended to relax validation of configs so that parsers that have
+     * different AST types or scope managers can still be passed to configs
+     *
+     * @see {@link LooseRuleDefinition}, {@link LooseParserModule}
+     */
+    interface LooseProcessorModule {
+        /**
+         * Information about the processor to uniquely identify it when serializing.
+         */
+        meta?: {
+            [K in keyof ProcessorMeta]?: ProcessorMeta[K] | undefined;
+        };
+        /**
+         * The function to extract code blocks.
+         */
+        preprocess?: (text: string, filename: string) => any;
+        /**
+         * The function to merge messages.
+         */
+        postprocess?: (messagesList: any, filename: string) => any;
+        /**
+         * If `true` then it means the processor supports autofix.
+         */
+        supportsAutofix?: boolean | undefined;
+    }
 }
-/**
- * A record of which paths have been matched in a given walk step,
- * and whether they only are considered a match if they are a directory,
- * and whether their absolute or relative path should be returned.
- */
-export declare class MatchRecord {
-    store: Map<Path, number>;
-    add(target: Path, absolute: boolean, ifDir: boolean): void;
-    entries(): [Path, boolean, boolean][];
-}
-/**
- * A collection of patterns that must be processed in a subsequent step
- * for a given path.
- */
-export declare class SubWalks {
-    store: Map<Path, Pattern[]>;
-    add(target: Path, pattern: Pattern): void;
-    get(target: Path): Pattern[];
-    entries(): [Path, Pattern[]][];
-    keys(): Path[];
-}
-/**
- * The class that processes patterns for a given path.
- *
- * Handles child entry filtering, and determining whether a path's
- * directory contents must be read.
- */
-export declare class Processor {
-    hasWalkedCache: HasWalkedCache;
-    matches: MatchRecord;
-    subwalks: SubWalks;
-    patterns?: Pattern[];
-    follow: boolean;
-    dot: boolean;
-    opts: GlobWalkerOpts;
-    constructor(opts: GlobWalkerOpts, hasWalkedCache?: HasWalkedCache);
-    processPatterns(target: Path, patterns: Pattern[]): this;
-    subwalkTargets(): Path[];
-    child(): Processor;
-    filterEntries(parent: Path, entries: Path[]): Processor;
-    testGlobstar(e: Path, pattern: Pattern, rest: Pattern | null, absolute: boolean): void;
-    testRegExp(e: Path, p: MMRegExp, rest: Pattern | null, absolute: boolean): void;
-    testString(e: Path, p: string, rest: Pattern | null, absolute: boolean): void;
-}
-//# sourceMappingURL=processor.d.ts.map
+//# sourceMappingURL=Processor.d.ts.map
