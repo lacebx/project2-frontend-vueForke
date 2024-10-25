@@ -23,4 +23,4 @@ jobs:
           SOURCE: "dist/"
           REMOTE_HOST: "project2.eaglesoftwareteam.com"
           REMOTE_USER: ubuntu
-          TARGET: "/var/www/html/2024/project2/t8"
+          TARGET: "/var/www/html/2024/project2/t8/assets"
